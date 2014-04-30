@@ -4,7 +4,7 @@
         xmlns:ni="http://schemas.ni.com/controls/2009/xaml/presentation" x:Class="REMS.MainWindow"
         Title="MainWindow" Height="600" Width="800">
     <Grid>
-        
+
         <DockPanel>
             <Menu DockPanel.Dock="Top">
                 <MenuItem Header="_File">
@@ -23,16 +23,37 @@
             <StackPanel></StackPanel>
         </DockPanel>
 
-        <TabControl Margin="200,25,9.6,10">
-            
+        <TabControl Margin="200,25,10,10">
             <TabItem Header="Results">
-                <Grid Background="#FFE5E5E5">
-                    <Canvas Name="image_canvas" Margin="10,10,10.4,9.6" Background="Red"/>
+                <Grid Background="#FFE5E5E5"
+                    x:Name="theGrid">
+
+                    <!--<Canvas Name="image_canvas" Margin="12" Background="Blue"  />-->
+                    <Image Name="pcb_image"
+                            MouseDown="Grid_MouseDown"
+                            MouseUp="Grid_MouseUp"
+                            MouseMove="Grid_MouseMove"/>
+                    <Grid Name="heat_map" ShowGridLines="false" Opacity=".5" />
+                    <!--<Canvas>
+                         This canvas contains elements that are to be selected 
+                    </Canvas>-->
+
+                    <Canvas>
+                        <!-- This canvas is overlaid over the previous canvas and is used to 
+                             place the rectangle that implements the drag selection box. -->
+                        <Rectangle
+                            x:Name="selectionBox"
+                            Visibility="Collapsed"
+                            Stroke="Red"
+                            StrokeDashArray="2,1"
+                            StrokeThickness="3"
+                            />
+                    </Canvas>
                 </Grid>
             </TabItem>
-            
+
             <TabItem Header="Analyze">
-                
+
                 <Grid Background="#FFE5E5E5">
 
                     <DataGrid Name="analyzeGrid" HorizontalAlignment="Left" AutoGenerateColumns="True" Width="150" Margin="10,10,0,10"/>
@@ -44,23 +65,29 @@
                             </ni:Plot>
                         </ni:Graph.Plots>
                     </ni:Graph>
-                    
+
                 </Grid>
             </TabItem>
         </TabControl>
+
+        <TextBox Height="23" TextWrapping="Wrap" Text="TextBox" Width="120" Margin="40,204,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
 
         <Button Content="UP" HorizontalAlignment="Left" Margin="75,70,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
         <Button Content="LEFT" HorizontalAlignment="Left" Margin="20,100,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
         <Button Content="RIGHT" HorizontalAlignment="Left" Margin="130,100,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
         <Button Content="DOWN" HorizontalAlignment="Left" Margin="75,130,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
 
+
+
+
+
+        <Button Content="Set Area" HorizontalAlignment="Left" Margin="75,267,0,0" VerticalAlignment="Top" Width="50" Height="22" Click="set_area_click"/>
+
         <Label Content="Estimated Time Remaining" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" 
                HorizontalAlignment="Left" Margin="20,0,0,65" Width="160" Height="30" VerticalAlignment="Bottom" FontWeight="Bold"/>
-        
+
         <Label Content="00:00:00.00" HorizontalContentAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,50" Width="120" Height="26" VerticalAlignment="Bottom"/>
 
         <Button Content="Start" Height="22" Width="80" HorizontalAlignment="Left" Margin="60,0,0,10" Click="button1_Click" VerticalAlignment="Bottom"  />
-
-        
     </Grid>
 </Window>
