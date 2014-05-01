@@ -22,7 +22,19 @@ namespace REMS
     /// </summary>
     public partial class MainWindow : Window
     {
-        
+        private enum state : int
+        {
+            Initial,
+            Ready,
+            Stopped,
+            Scanning,
+            Done
+        }
+
+        private Boolean imageLoaded = false;
+        public Boolean scanAreaSet = false;
+        private state currentState = state.Initial;
+        private ImageSource loadedImage;
 
         AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(0);
         string mFileName;
@@ -234,7 +246,113 @@ namespace REMS
             brush.ImageSource = new BitmapImage(new Uri(mFileName, UriKind.Relative));
             image_canvas.Background = brush;*/
 
-            pcb_image.Source = new BitmapImage(new Uri(mFileName));
+            loadedImage = new BitmapImage(new Uri(mFileName));
+            pcb_image.Source = loadedImage;
+            imageLoaded = true;
+        }
+
+        private void click_cancel(object sender, RoutedEventArgs e)
+        {
+            if (currentState == state.Ready)
+            {
+                currentState = state.Initial;
+                btnCancel.IsEnabled = false;
+
+                btnAccept.IsEnabled = false;
+                btnAccept.Background = null;
+                btnAccept.Content = "Accept";
+
+                scanAreaSet = false;
+                pcb_image.Source = loadedImage;
+            }
+            else if (currentState == state.Scanning)
+            {
+                currentState = state.Initial;
+                lblStatus.Text = "Select a scan area";
+            }
+        }
+
+        private void click_accept(object sender, RoutedEventArgs e)
+        {
+            if (currentState == state.Initial && scanAreaSet)
+            {
+                currentState = state.Ready;
+                lblStatus.Text = "Ready to start scanning";
+
+                btnCancel.IsEnabled = true;
+
+                btnAccept.Background = Brushes.Green;
+                btnAccept.Content = "Start";
+
+                setScanArea();
+            }
+            else if (currentState == state.Ready)
+            {
+                currentState = state.Scanning;
+                lblStatus.Text = "Scanning...";
+
+                btnCancel.Background = Brushes.Red;
+                btnCancel.Content = "Stop";   
+            }
+        }
+
+        private void setScanArea()
+        {
+            // Crop down the image to the selected region
+            pcb_image.Source = cropImage(pcb_image, imageMouseDownPos, imageMouseUpPos);
+
+            // Clear the selection (if there is one)
+            selectionBox.Visibility = Visibility.Collapsed;
+            //currentState = state.Initial;
+        }
+
+        public ImageSource cropImage(Image aImage, Point aMouseDown, Point aMouseUp)
+        {
+            Point topLeft = new Point();
+            Point bottomRight = new Point();
+
+            if (aMouseDown.X < aMouseUp.X && aMouseDown.Y < aMouseUp.Y) // top left to bottom right
+            {
+                topLeft = aMouseDown;
+                bottomRight = aMouseUp;
+            }
+            else if (aMouseDown.X > aMouseUp.X && aMouseDown.Y > aMouseUp.Y) // bottom right to top left
+            {
+                topLeft = aMouseUp;
+                bottomRight = aMouseDown;
+            }
+            else if (aMouseDown.X > aMouseUp.X && aMouseDown.Y < aMouseUp.Y) // top right to bottom left
+            {
+                topLeft.X = aMouseUp.X;
+                topLeft.Y = aMouseDown.Y;
+                bottomRight.X = aMouseDown.X;
+                bottomRight.Y = aMouseUp.Y;
+            }
+            else if (aMouseDown.X < aMouseUp.X && aMouseDown.Y > aMouseUp.Y) // bottom left to top right
+            {
+                topLeft.X = aMouseDown.X;
+                topLeft.Y = aMouseUp.Y;
+                bottomRight.X = aMouseUp.X;
+                bottomRight.Y = aMouseDown.Y;
+            }
+
+            // Convert selected coordinates to actual image coordinates
+            Double Xbegin = (topLeft.X * aImage.Source.Width) / aImage.ActualWidth;
+            Double Ybegin = (topLeft.Y * aImage.Source.Height) / aImage.ActualHeight;
+            Double Xend = (bottomRight.X * aImage.Source.Width) / aImage.ActualWidth;
+            Double Yend = (bottomRight.Y * aImage.Source.Height) / aImage.ActualHeight;
+
+            // Convert coordinates to integers
+            int xPos = Convert.ToInt32(Math.Round(Xbegin, 0, MidpointRounding.ToEven));
+            int yPos = Convert.ToInt32(Math.Round(Ybegin, 0, MidpointRounding.ToEven));
+            int width = Convert.ToInt32(Math.Round(Xend - Xbegin, 0, MidpointRounding.ToEven));
+            int height = Convert.ToInt32(Math.Round(Yend - Ybegin, 0, MidpointRounding.ToEven));
+
+            // Create the cropped image
+            var fullImage = aImage.Source;
+            var croppedImage = new CroppedBitmap((BitmapSource)fullImage, new Int32Rect(xPos, yPos, width, height));
+
+            return croppedImage;
         }
 
         //
@@ -250,103 +368,67 @@ namespace REMS
 
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Capture and track the mouse.
-            mouseDown = true;
-            gridMouseDownPos = e.GetPosition(theGrid);
-            imageMouseDownPos = e.GetPosition(pcb_image);
+            if (imageLoaded && currentState == state.Initial)
+            {
+                mouseDown = true;
+                gridMouseDownPos = e.GetPosition(theGrid);
+                imageMouseDownPos = e.GetPosition(pcb_image);
 
-            //theGrid.CaptureMouse();
+                // Initial placement of the drag selection box.         
+                Canvas.SetLeft(selectionBox, gridMouseDownPos.X);
+                Canvas.SetTop(selectionBox, gridMouseDownPos.Y);
+                selectionBox.Width = 0;
+                selectionBox.Height = 0;
 
-            // Initial placement of the drag selection box.         
-            Canvas.SetLeft(selectionBox, gridMouseDownPos.X);
-            Canvas.SetTop(selectionBox, gridMouseDownPos.Y);
-            selectionBox.Width = 0;
-            selectionBox.Height = 0;
-
-            // Make the drag selection box visible.
-            selectionBox.Visibility = Visibility.Visible;
-
-            //Console.WriteLine("\nX: " + mouseDownPos.X + "\nY: " + mouseDownPos.Y);
-            //Console.WriteLine("\nImageX: " + point.X + "\nImageY: " + point.Y);
+                //if (mouseMoved)
+                //{
+                    // Make the drag selection box visible.
+                    //selectionBox.Visibility = Visibility.Visible;
+                    //currentState = state.AreaSelected;
+                //}
+            }
         }
 
         private void Grid_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            // Release the mouse capture and stop tracking it.
-            mouseDown = false;
-            //theGrid.ReleaseMouseCapture();
+            if (imageLoaded && currentState == state.Initial)
+            {
+                mouseDown = false;
+                gridMouseUpPos = e.GetPosition(theGrid);
+                imageMouseUpPos = e.GetPosition(pcb_image);
 
-            // Hide the drag selection box.
-            //selectionBox.Visibility = Visibility.Collapsed;
+                if (gridMouseDownPos.X != gridMouseUpPos.X && gridMouseDownPos.Y != gridMouseUpPos.Y)
+                {
+                    Console.WriteLine("height: " + selectionBox.ActualHeight);
+                    Console.WriteLine("width: " + selectionBox.ActualWidth);
+                    scanAreaSet = true;
+                    btnAccept.IsEnabled = true;
+                }
+                else
+                {
+                    scanAreaSet = false;
+                    btnAccept.IsEnabled = false;
+                }
 
-            gridMouseUpPos = e.GetPosition(theGrid);
-            imageMouseUpPos = e.GetPosition(pcb_image);
+                Console.WriteLine("Scan Area Set: " + scanAreaSet);
+            }
+            else
+            {
+                Console.WriteLine("Image Loaded: " + imageLoaded);
+                Console.WriteLine("Current State: " + currentState);
 
-            // TODO: 
-            //
-            // The mouse has been released, check to see if any of the items 
-            // in the other canvas are contained within mouseDownPos and 
-            // mouseUpPos, for any that are, select them!
-            //
+            }
+            
         }
 
-        public void set_area_click(object sender, RoutedEventArgs e)
-        {
-            Point topLeft = new Point();
-            Point bottomRight = new Point();
-
-            if (imageMouseDownPos.X < imageMouseUpPos.X && imageMouseDownPos.Y < imageMouseUpPos.Y) // top left to bottom right
-            {
-                topLeft = imageMouseDownPos;
-                bottomRight = imageMouseUpPos;
-            }
-            else if(imageMouseDownPos.X > imageMouseUpPos.X && imageMouseDownPos.Y > imageMouseUpPos.Y) // bottom right to top left
-            {
-                topLeft = imageMouseUpPos;
-                bottomRight = imageMouseDownPos;
-            }
-            else if (imageMouseDownPos.X > imageMouseUpPos.X && imageMouseDownPos.Y < imageMouseUpPos.Y) // top right to bottom left
-            {
-                topLeft.X = imageMouseUpPos.X;
-                topLeft.Y = imageMouseDownPos.Y;
-                bottomRight.X = imageMouseDownPos.X;
-                bottomRight.Y = imageMouseUpPos.Y;
-            }
-            else if (imageMouseDownPos.X < imageMouseUpPos.X && imageMouseDownPos.Y > imageMouseUpPos.Y) // bottom left to top right
-            {
-                topLeft.X = imageMouseDownPos.X;
-                topLeft.Y = imageMouseUpPos.Y;
-                bottomRight.X = imageMouseUpPos.X;
-                bottomRight.Y = imageMouseDownPos.Y;
-            }
-
-            // Convert selected coordinates to actual image coordinates
-            Double Xbegin = (topLeft.X * pcb_image.Source.Width) / pcb_image.ActualWidth;
-            Double Ybegin = (topLeft.Y * pcb_image.Source.Height) / pcb_image.ActualHeight;
-            Double Xend = (bottomRight.X * pcb_image.Source.Width) / pcb_image.ActualWidth;
-            Double Yend = (bottomRight.Y * pcb_image.Source.Height) / pcb_image.ActualHeight;
-            
-            // Convert coordinates integers
-            int xPos = Convert.ToInt32(Math.Round(Xbegin, 0, MidpointRounding.ToEven));
-            int yPos = Convert.ToInt32(Math.Round(Ybegin, 0, MidpointRounding.ToEven));
-            int width = Convert.ToInt32(Math.Round(Xend - Xbegin, 0, MidpointRounding.ToEven));
-            int height = Convert.ToInt32(Math.Round(Yend - Ybegin, 0, MidpointRounding.ToEven));
-            
-            // Create the cropped image
-            var fullImage = pcb_image.Source;
-            var croppedImage = new CroppedBitmap((BitmapSource)fullImage, new Int32Rect(xPos, yPos, width, height));
-            pcb_image.Source = croppedImage;
-
-            // Clear the selection (if there is one)
-            selectionBox.Visibility = Visibility.Collapsed;
-        }
-
+        
         private void Grid_MouseMove(object sender, MouseEventArgs e)
         {
             if (mouseDown)
             {
-                // When the mouse is held down, reposition the drag selection box.
+                selectionBox.Visibility = Visibility.Visible;
 
+                // When the mouse is held down, reposition the drag selection box.
                 Point mouseImagePos = e.GetPosition(pcb_image);
                 Point mousePos = e.GetPosition(theGrid);
 
@@ -380,6 +462,8 @@ namespace REMS
                 }
             }
         }
+
+        
 
         /*
          * Obsolete Code

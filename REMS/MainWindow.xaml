@@ -2,10 +2,10 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ni="http://schemas.ni.com/controls/2009/xaml/presentation" x:Class="REMS.MainWindow"
-        Title="MainWindow" Height="600" Width="800">
+        Title="MainWindow" Height="600" MinHeight="600" Width="800" MinWidth="800">
     <Grid>
 
-        <DockPanel>
+        <DockPanel >
             <Menu DockPanel.Dock="Top">
                 <MenuItem Header="_File">
                     <MenuItem Header="_Open" Click="open_file"/>
@@ -20,19 +20,81 @@
                     <MenuItem Header="_Spectrum Analyzer"/>
                 </MenuItem>
             </Menu>
+
+            <StatusBar DockPanel.Dock="Bottom">
+                <StatusBar.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                    </ItemsPanelTemplate>
+                </StatusBar.ItemsPanel>
+                <StatusBarItem>
+                    <TextBlock Name="lblStatus" Text="Select a scan area" />
+                </StatusBarItem>
+                <Separator Grid.Column="1" />
+                <StatusBarItem Grid.Column="2">
+                    <TextBlock Text="X:" />
+                </StatusBarItem>
+                <StatusBarItem Grid.Column="3">
+                    <TextBlock Text="000" />
+                </StatusBarItem>
+                <StatusBarItem Grid.Column="4">
+                    <TextBlock Text="Y:" />
+                </StatusBarItem>
+                <StatusBarItem Grid.Column="5">
+                    <TextBlock Text="000" />
+                </StatusBarItem>
+                <StatusBarItem Grid.Column="6">
+                    <TextBlock Text="Z:" />
+                </StatusBarItem>
+                <StatusBarItem Grid.Column="7">
+                    <TextBlock Text="000" />
+                </StatusBarItem>
+                <Separator Grid.Column="8" />
+                <StatusBarItem Grid.Column="9" HorizontalAlignment="Center" >
+                    <TextBlock Text="00:00:00.00" />
+                </StatusBarItem>
+            </StatusBar>
             <StackPanel></StackPanel>
         </DockPanel>
 
-        <TabControl Margin="200,25,10,10">
+        <GroupBox Header="Jog Controls" Margin="10,25,0,350" HorizontalAlignment="Left" Width="184"  >
+            <Grid>
+                <Button Content="UP" HorizontalAlignment="Left" Margin="63,9,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
+                <Button Content="LEFT" HorizontalAlignment="Left" Margin="13,59,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
+                <Button Content="RIGHT" HorizontalAlignment="Left" Margin="112,59,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
+                <Button Content="DOWN" HorizontalAlignment="Left" Margin="62,109,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
+            </Grid>
+        </GroupBox>
+
+        <!--<Button Content="Set Area" HorizontalAlignment="Left" Margin="110,392,0,0" VerticalAlignment="Top" Width="50" Height="22" Click="setScanArea"/>-->
+
+        <Button Name="btnCancel" Content="Cancel" Height="22" Width="80" HorizontalAlignment="Left" Margin="10,0,0,28" Click="click_cancel" VerticalAlignment="Bottom" IsEnabled="False"  />
+        <Button Name="btnAccept" Content="Accept" Height="22" Width="80" HorizontalAlignment="Left" Margin="110,0,0,28" Click="click_accept" VerticalAlignment="Bottom" IsEnabled="False"  />
+
+        <TabControl Margin="200,25,10,28" >
             <TabItem Header="Results">
                 <Grid Background="#FFE5E5E5"
-                    x:Name="theGrid">
+                    x:Name="theGrid"
+                    MouseDown="Grid_MouseDown"
+                    MouseUp="Grid_MouseUp"
+                    MouseMove="Grid_MouseMove">
 
                     <!--<Canvas Name="image_canvas" Margin="12" Background="Blue"  />-->
                     <Image Name="pcb_image"
-                            MouseDown="Grid_MouseDown"
-                            MouseUp="Grid_MouseUp"
-                            MouseMove="Grid_MouseMove"/>
+                            />
                     <Grid Name="heat_map" ShowGridLines="false" Opacity=".5" />
                     <!--<Canvas>
                          This canvas contains elements that are to be selected 
@@ -53,7 +115,6 @@
             </TabItem>
 
             <TabItem Header="Analyze">
-
                 <Grid Background="#FFE5E5E5">
 
                     <DataGrid Name="analyzeGrid" HorizontalAlignment="Left" AutoGenerateColumns="True" Width="150" Margin="10,10,0,10"/>
@@ -70,24 +131,8 @@
             </TabItem>
         </TabControl>
 
-        <TextBox Height="23" TextWrapping="Wrap" Text="TextBox" Width="120" Margin="40,204,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-
-        <Button Content="UP" HorizontalAlignment="Left" Margin="75,70,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
-        <Button Content="LEFT" HorizontalAlignment="Left" Margin="20,100,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
-        <Button Content="RIGHT" HorizontalAlignment="Left" Margin="130,100,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
-        <Button Content="DOWN" HorizontalAlignment="Left" Margin="75,130,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
+        <TextBox Height="23" TextWrapping="Wrap" Text="TextBox" Width="120" Margin="40,364,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
 
 
-
-
-
-        <Button Content="Set Area" HorizontalAlignment="Left" Margin="75,267,0,0" VerticalAlignment="Top" Width="50" Height="22" Click="set_area_click"/>
-
-        <Label Content="Estimated Time Remaining" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" 
-               HorizontalAlignment="Left" Margin="20,0,0,65" Width="160" Height="30" VerticalAlignment="Bottom" FontWeight="Bold"/>
-
-        <Label Content="00:00:00.00" HorizontalContentAlignment="Center" HorizontalAlignment="Left" Margin="40,0,0,50" Width="120" Height="26" VerticalAlignment="Bottom"/>
-
-        <Button Content="Start" Height="22" Width="80" HorizontalAlignment="Left" Margin="60,0,0,10" Click="button1_Click" VerticalAlignment="Bottom"  />
     </Grid>
 </Window>
