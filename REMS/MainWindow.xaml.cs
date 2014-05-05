@@ -14,6 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using NationalInstruments;
+using REMS.classes;
 
 namespace REMS
 {
@@ -26,11 +27,15 @@ namespace REMS
         {
             Initial,
             Ready,
+            Calibration,
             Stopped,
             Scanning,
             Done
         }
 
+        private Point[] calibrationPoints = new Point[2]; // which calibration points have been collected
+        private Point[] imageCalibrationPoints = new Point[2];
+        private int numOfCalibrationPoints = 0;
         private Boolean imageLoaded = false;
         public Boolean scanAreaSet = false;
         private state currentState = state.Initial;
@@ -43,7 +48,13 @@ namespace REMS
         {
             InitializeComponent();
             analyzeGrid.ItemsSource = LoadCollectionData();
-            setupHeatMap(50, 50);
+            //setupHeatMap(50, 50);
+
+            //lblStatus.Text = status.Initial;
+
+            // Load user/application settings
+            imageCalibrationPoints[0] = (Point)Properties.Settings.Default["TableBL"];
+            imageCalibrationPoints[1] = (Point)Properties.Settings.Default["TableTR"];
         }
 
         // TODO: Show current x,y,z location on main panel
@@ -185,8 +196,6 @@ namespace REMS
             // Display OpenFileDialog by calling ShowDialog method 
             Nullable<bool> result = dlg.ShowDialog();
 
-
-
             // Get the selected file name and display in a TextBox 
             if (result == true)
             {
@@ -201,7 +210,7 @@ namespace REMS
                     read_csv();
                 }
 
-                if (tokens[1] == "jpg")
+                if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
                 {
                     open_image();
                 }
@@ -242,13 +251,25 @@ namespace REMS
 
         private void open_image()
         {
-            /*ImageBrush brush = new ImageBrush();
-            brush.ImageSource = new BitmapImage(new Uri(mFileName, UriKind.Relative));
-            image_canvas.Background = brush;*/
-
-            loadedImage = new BitmapImage(new Uri(mFileName));
+            loadedImage = null;
+            loadedImage = ConvertBitmapTo96DPI(new BitmapImage(new Uri(mFileName)));
             pcb_image.Source = loadedImage;
             imageLoaded = true;
+
+            
+        }
+
+        public static BitmapSource ConvertBitmapTo96DPI(BitmapImage bitmapImage)
+        {
+            double dpi = 96;
+            int width = bitmapImage.PixelWidth;
+            int height = bitmapImage.PixelHeight;
+
+            int stride = width * bitmapImage.Format.BitsPerPixel;
+            byte[] pixelData = new byte[stride * height];
+            bitmapImage.CopyPixels(pixelData, stride, 0);
+
+            return BitmapSource.Create(width, height, dpi, dpi, bitmapImage.Format, null, pixelData, stride);
         }
 
         private void click_cancel(object sender, RoutedEventArgs e)
@@ -256,19 +277,21 @@ namespace REMS
             if (currentState == state.Ready)
             {
                 currentState = state.Initial;
-                btnCancel.IsEnabled = false;
-
-                btnAccept.IsEnabled = false;
-                btnAccept.Background = null;
-                btnAccept.Content = "Accept";
-
-                scanAreaSet = false;
+                updateComponentsByState(currentState);
                 pcb_image.Source = loadedImage;
+                selectorCanvas.Visibility = Visibility.Visible; 
             }
             else if (currentState == state.Scanning)
             {
+                currentState = state.Stopped;
+                updateComponentsByState(currentState);
+            }
+            else if (currentState == state.Stopped)
+            {
                 currentState = state.Initial;
-                lblStatus.Text = "Select a scan area";
+                updateComponentsByState(currentState);
+                pcb_image.Source = null;
+                selectorCanvas.Visibility = Visibility.Visible;
             }
         }
 
@@ -277,22 +300,75 @@ namespace REMS
             if (currentState == state.Initial && scanAreaSet)
             {
                 currentState = state.Ready;
-                lblStatus.Text = "Ready to start scanning";
+                updateComponentsByState(currentState);
 
-                btnCancel.IsEnabled = true;
-
-                btnAccept.Background = Brushes.Green;
-                btnAccept.Content = "Start";
-
+                selectorCanvas.Visibility = Visibility.Collapsed;
                 setScanArea();
             }
             else if (currentState == state.Ready)
             {
                 currentState = state.Scanning;
-                lblStatus.Text = "Scanning...";
+                updateComponentsByState(currentState);
+            }
+            else if (currentState == state.Calibration)
+            {
+                currentState = state.Initial;
+                updateComponentsByState(currentState);
+                DrawTableArea();
+            }
+        }
 
-                btnCancel.Background = Brushes.Red;
-                btnCancel.Content = "Stop";   
+        private void updateComponentsByState(state aState)
+        {
+            switch (aState)
+            {
+                case state.Initial:
+                    btnCancel.Content = "Cancel";
+                    btnCancel.Background = null;
+                    btnCancel.IsEnabled = false;
+
+                    btnAccept.Content = "Accept";
+                    btnAccept.Background = null;
+                    btnAccept.IsEnabled = false;
+
+                    lblStatus.Text = status.Initial;
+                    break;
+
+                case state.Ready:
+                    btnCancel.Content = "Cancel";
+                    btnCancel.Background = null;
+                    btnCancel.IsEnabled = true;
+
+                    btnAccept.Content = "Start";
+                    btnAccept.Background = Brushes.Green;
+                    btnAccept.IsEnabled = true;
+
+                    lblStatus.Text = status.Ready;
+                    break;
+
+                case state.Scanning:
+                    btnCancel.Content = "Stop";
+                    btnCancel.Background = Brushes.Red;
+                    btnCancel.IsEnabled = true;
+
+                    btnAccept.Content = "Start";
+                    btnAccept.Background = Brushes.Green;
+                    btnAccept.IsEnabled = false;
+
+                    lblStatus.Text = status.Scanning;
+                    break;
+
+                case state.Stopped:
+                    btnCancel.Content = "Reset";
+                    btnCancel.Background = null;
+                    btnCancel.IsEnabled = true;
+
+                    btnAccept.Content = "Start";
+                    btnAccept.Background = Brushes.Green;
+                    btnAccept.IsEnabled = true;
+
+                    lblStatus.Text = status.Stopped;
+                    break;
             }
         }
 
@@ -302,45 +378,55 @@ namespace REMS
             pcb_image.Source = cropImage(pcb_image, imageMouseDownPos, imageMouseUpPos);
 
             // Clear the selection (if there is one)
-            selectionBox.Visibility = Visibility.Collapsed;
+            //selectionBox.Visibility = Visibility.Collapsed;
             //currentState = state.Initial;
+        }
+
+        private Point[] determineOpositeCorners(Point aPoint1, Point aPoint2)
+        {
+            Point topLeft = new Point();
+            Point bottomRight = new Point();
+            Point[] corners = new Point[2];
+
+            if (aPoint1.X < aPoint2.X && aPoint1.Y < aPoint2.Y) // top left to bottom right
+            {
+                topLeft = aPoint1;
+                bottomRight = aPoint2;
+            }
+            else if (aPoint1.X > aPoint2.X && aPoint1.Y > aPoint2.Y) // bottom right to top left
+            {
+                topLeft = aPoint2;
+                bottomRight = aPoint1;
+            }
+            else if (aPoint1.X > aPoint2.X && aPoint1.Y < aPoint2.Y) // top right to bottom left
+            {
+                topLeft.X = aPoint2.X;
+                topLeft.Y = aPoint1.Y;
+                bottomRight.X = aPoint1.X;
+                bottomRight.Y = aPoint2.Y;
+            }
+            else if (aPoint1.X < aPoint2.X && aPoint1.Y > aPoint2.Y) // bottom left to top right
+            {
+                topLeft.X = aPoint1.X;
+                topLeft.Y = aPoint2.Y;
+                bottomRight.X = aPoint2.X;
+                bottomRight.Y = aPoint1.Y;
+            }
+
+            corners[0] = topLeft;
+            corners[1] = bottomRight;
+            return corners;
         }
 
         public ImageSource cropImage(Image aImage, Point aMouseDown, Point aMouseUp)
         {
-            Point topLeft = new Point();
-            Point bottomRight = new Point();
-
-            if (aMouseDown.X < aMouseUp.X && aMouseDown.Y < aMouseUp.Y) // top left to bottom right
-            {
-                topLeft = aMouseDown;
-                bottomRight = aMouseUp;
-            }
-            else if (aMouseDown.X > aMouseUp.X && aMouseDown.Y > aMouseUp.Y) // bottom right to top left
-            {
-                topLeft = aMouseUp;
-                bottomRight = aMouseDown;
-            }
-            else if (aMouseDown.X > aMouseUp.X && aMouseDown.Y < aMouseUp.Y) // top right to bottom left
-            {
-                topLeft.X = aMouseUp.X;
-                topLeft.Y = aMouseDown.Y;
-                bottomRight.X = aMouseDown.X;
-                bottomRight.Y = aMouseUp.Y;
-            }
-            else if (aMouseDown.X < aMouseUp.X && aMouseDown.Y > aMouseUp.Y) // bottom left to top right
-            {
-                topLeft.X = aMouseDown.X;
-                topLeft.Y = aMouseUp.Y;
-                bottomRight.X = aMouseUp.X;
-                bottomRight.Y = aMouseDown.Y;
-            }
+            Point[] corners = determineOpositeCorners(aMouseDown, aMouseUp);
 
             // Convert selected coordinates to actual image coordinates
-            Double Xbegin = (topLeft.X * aImage.Source.Width) / aImage.ActualWidth;
-            Double Ybegin = (topLeft.Y * aImage.Source.Height) / aImage.ActualHeight;
-            Double Xend = (bottomRight.X * aImage.Source.Width) / aImage.ActualWidth;
-            Double Yend = (bottomRight.Y * aImage.Source.Height) / aImage.ActualHeight;
+            Double Xbegin = (corners[0].X * aImage.Source.Width) / aImage.ActualWidth;
+            Double Ybegin = (corners[0].Y * aImage.Source.Height) / aImage.ActualHeight;
+            Double Xend = (corners[1].X * aImage.Source.Width) / aImage.ActualWidth;
+            Double Yend = (corners[1].Y * aImage.Source.Height) / aImage.ActualHeight;
 
             // Convert coordinates to integers
             int xPos = Convert.ToInt32(Math.Round(Xbegin, 0, MidpointRounding.ToEven));
@@ -355,52 +441,140 @@ namespace REMS
             return croppedImage;
         }
 
-        //
-        //
-        // Drag area
-        //
-        //
+
         bool mouseDown = false; // Set to 'true' when mouse is held down.
-        Point gridMouseDownPos; // The point where the mouse button was clicked down on the grid.
         Point imageMouseDownPos; // The point where the mouse button was clicked down on the image.
-        Point gridMouseUpPos;
         Point imageMouseUpPos;
 
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            imageMouseDownPos = e.GetPosition(selectorCanvas);
+
             if (imageLoaded && currentState == state.Initial)
             {
-                mouseDown = true;
-                gridMouseDownPos = e.GetPosition(theGrid);
-                imageMouseDownPos = e.GetPosition(pcb_image);
-
-                // Initial placement of the drag selection box.         
-                Canvas.SetLeft(selectionBox, gridMouseDownPos.X);
-                Canvas.SetTop(selectionBox, gridMouseDownPos.Y);
-                selectionBox.Width = 0;
-                selectionBox.Height = 0;
-
-                //if (mouseMoved)
-                //{
-                    // Make the drag selection box visible.
-                    //selectionBox.Visibility = Visibility.Visible;
-                    //currentState = state.AreaSelected;
-                //}
+                if (imageMouseDownPos.X >= calibrationPoints[0].X &&
+                    imageMouseDownPos.Y >= calibrationPoints[0].Y &&
+                    imageMouseDownPos.X <= calibrationPoints[1].X &&
+                    imageMouseDownPos.Y <= calibrationPoints[1].Y)
+                {
+                    mouseDown = true;
+                    DrawScanArea();
+                }
             }
+            else if (currentState == state.Calibration)
+            {
+                numOfCalibrationPoints++;
+
+                if (numOfCalibrationPoints <= 2)
+                {
+                    DrawCircle(e.GetPosition(selectorCanvas));
+                }
+
+                if (numOfCalibrationPoints == 1)
+                {
+                    calibrationPoints[0] = e.GetPosition(pcb_image);
+                    
+                    lblStatus.Text = "Now click on the top right corner of the table";
+
+                    btnCancel.IsEnabled = true;
+                    btnAccept.IsEnabled = false;
+                }
+                else if (numOfCalibrationPoints == 2)
+                {
+                    calibrationPoints[1] = e.GetPosition(pcb_image);
+                    
+                    // Make sure that we always have the bottom left and top right corners
+                    Point[] corners = determineOpositeCorners(calibrationPoints[0], calibrationPoints[1]);
+                    calibrationPoints[0] = corners[0];
+                    calibrationPoints[1] = corners[1];
+                    imageCalibrationPoints[0] = getActualImagePixel(pcb_image, calibrationPoints[0]);
+                    imageCalibrationPoints[1] = getActualImagePixel(pcb_image, calibrationPoints[1]);
+                    
+                    lblStatus.Text = "Click 'Accept' if rectangle matches table";
+                    btnAccept.IsEnabled = true;
+                }
+            }
+        }
+
+        private Point getActualImagePixel(Image aImage, Point aLocation)
+        {
+            // Take current location and convert to actual image location
+            Double dblXPos = (aLocation.X * aImage.Source.Width) / aImage.ActualWidth;
+            Double dblYPos = (aLocation.Y * aImage.Source.Height) / aImage.ActualHeight;
+
+            // Convert coordinates to integers
+            int xPos = Convert.ToInt32(Math.Round(dblXPos, 0, MidpointRounding.ToEven));
+            int yPos = Convert.ToInt32(Math.Round(dblYPos, 0, MidpointRounding.ToEven));
+
+            return new Point(xPos, yPos);
+        }
+
+        private Point getRelativeImagePixel(Image aImage, Point aLocation)
+        {
+            // Take image pixel location and convert to relative image location
+            Double dblXPos = (aLocation.X * aImage.ActualWidth) / aImage.Source.Width;
+            Double dblYPos = (aLocation.Y * aImage.ActualHeight) / aImage.Source.Height;
+
+            // Convert coordinates to integers
+            int xPos = Convert.ToInt32(Math.Round(dblXPos, 0, MidpointRounding.ToEven));
+            int yPos = Convert.ToInt32(Math.Round(dblYPos, 0, MidpointRounding.ToEven));
+
+            return new Point(xPos, yPos);
+        }
+
+
+        private void DrawCircle(Point aLocation)
+        {
+            Shape Rendershape = new Ellipse() { Height = 20, Width = 20 };
+            Rendershape.Fill = Brushes.Blue;
+            Canvas.SetLeft(Rendershape, aLocation.X - 10);
+            Canvas.SetTop(Rendershape, aLocation.Y - 10);
+            selectorCanvas.Children.Add(Rendershape);
+        }
+
+        private void DrawTableArea()
+        {
+            // Delete everything in the selectorCanvas
+            selectorCanvas.Children.Clear();
+
+            // Draw the Table Area
+            Shape Rendershape = new Rectangle();
+            Rendershape.Stroke = Brushes.Blue;
+            Rendershape.StrokeThickness = 3;
+            Canvas.SetLeft(Rendershape, calibrationPoints[0].X);
+            Canvas.SetTop(Rendershape, calibrationPoints[0].Y);
+            Rendershape.Width = calibrationPoints[1].X - calibrationPoints[0].X;
+            Rendershape.Height = calibrationPoints[1].Y - calibrationPoints[0].Y;
+            selectorCanvas.Children.Add(Rendershape);
+        }
+
+        private void DrawScanArea()
+        {
+            // The area selection will always be in position 1
+            if (selectorCanvas.Children.Count > 1)
+            {
+                selectorCanvas.Children.RemoveAt(1);
+            }
+
+            Shape Rendershape = new Rectangle();
+            Rendershape.Stroke = Brushes.Red;
+            Rendershape.StrokeDashArray = new DoubleCollection() { 2, 1 };
+            Rendershape.Height = 0;
+            Rendershape.Width = 0;
+            Rendershape.StrokeThickness = 3;
+            selectorCanvas.Children.Add(Rendershape);
         }
 
         private void Grid_MouseUp(object sender, MouseButtonEventArgs e)
         {
+            imageMouseUpPos = e.GetPosition(pcb_image);
+
             if (imageLoaded && currentState == state.Initial)
             {
                 mouseDown = false;
-                gridMouseUpPos = e.GetPosition(theGrid);
-                imageMouseUpPos = e.GetPosition(pcb_image);
-
-                if (gridMouseDownPos.X != gridMouseUpPos.X && gridMouseDownPos.Y != gridMouseUpPos.Y)
+                
+                if (imageMouseDownPos.X != imageMouseUpPos.X && imageMouseDownPos.Y != imageMouseUpPos.Y)
                 {
-                    Console.WriteLine("height: " + selectionBox.ActualHeight);
-                    Console.WriteLine("width: " + selectionBox.ActualWidth);
                     scanAreaSet = true;
                     btnAccept.IsEnabled = true;
                 }
@@ -410,135 +584,81 @@ namespace REMS
                     btnAccept.IsEnabled = false;
                 }
 
-                Console.WriteLine("Scan Area Set: " + scanAreaSet);
             }
             else
             {
-                Console.WriteLine("Image Loaded: " + imageLoaded);
-                Console.WriteLine("Current State: " + currentState);
-
+                //Console.WriteLine("Image Loaded: " + imageLoaded);
+                //Console.WriteLine("Current State: " + currentState);
             }
-            
         }
 
-        
+
         private void Grid_MouseMove(object sender, MouseEventArgs e)
         {
             if (mouseDown)
             {
-                selectionBox.Visibility = Visibility.Visible;
-
                 // When the mouse is held down, reposition the drag selection box.
-                Point mouseImagePos = e.GetPosition(pcb_image);
-                Point mousePos = e.GetPosition(theGrid);
+                Point mousePos = e.GetPosition(selectorCanvas);
+               
+                Rectangle selectionBox = (Rectangle)selectorCanvas.Children[1];
 
                 // Restrict movement to image of PCB
-                if (mouseImagePos.X < 0) mousePos.X = mousePos.X - mouseImagePos.X;
-                if (mouseImagePos.X > pcb_image.ActualWidth) mousePos.X = mousePos.X - (mouseImagePos.X - pcb_image.ActualWidth);
-                if (mouseImagePos.Y < 0) mousePos.Y = mousePos.Y - mouseImagePos.Y;
-                if (mouseImagePos.Y > pcb_image.ActualHeight) mousePos.Y = mousePos.Y - (mouseImagePos.Y - pcb_image.ActualHeight);
+                if (mousePos.X < calibrationPoints[0].X) mousePos.X = calibrationPoints[0].X;
+                if (mousePos.X > calibrationPoints[1].X) mousePos.X = calibrationPoints[1].X;
+                if (mousePos.Y < calibrationPoints[0].Y) mousePos.Y = calibrationPoints[0].Y;
+                if (mousePos.Y > calibrationPoints[1].Y) mousePos.Y = calibrationPoints[1].Y;
 
                 // Position box
-                if (gridMouseDownPos.X < mousePos.X)
+                if (imageMouseDownPos.X < mousePos.X)
                 {
-                    Canvas.SetLeft(selectionBox, gridMouseDownPos.X);
-                    selectionBox.Width = mousePos.X - gridMouseDownPos.X;
+                    Canvas.SetLeft(selectorCanvas.Children[1], imageMouseDownPos.X);
+                    selectionBox.Width = mousePos.X - imageMouseDownPos.X;
                 }
                 else
                 {
                     Canvas.SetLeft(selectionBox, mousePos.X);
-                    selectionBox.Width = gridMouseDownPos.X - mousePos.X;
+                    selectionBox.Width = imageMouseDownPos.X - mousePos.X;
                 }
 
-                if (gridMouseDownPos.Y < mousePos.Y)
+                if (imageMouseDownPos.Y < mousePos.Y)
                 {
-                    Canvas.SetTop(selectionBox, gridMouseDownPos.Y);
-                    selectionBox.Height = mousePos.Y - gridMouseDownPos.Y;
+                    Canvas.SetTop(selectionBox, imageMouseDownPos.Y);
+                    selectionBox.Height = mousePos.Y - imageMouseDownPos.Y;
                 }
                 else
                 {
                     Canvas.SetTop(selectionBox, mousePos.Y);
-                    selectionBox.Height = gridMouseDownPos.Y - mousePos.Y;
+                    selectionBox.Height = imageMouseDownPos.Y - mousePos.Y;
                 }
             }
         }
 
-        
-
-        /*
-         * Obsolete Code
-         * 
-        
-        Rectangle exampleRectangle = new Rectangle();
-        exampleRectangle.Width = 300;
-        exampleRectangle.Height = 300;
-
-        // Create an ImageBrush and use it to 
-        // paint the rectangle.
-        ImageBrush myBrush = new ImageBrush();
-        //myBrush.ImageSource = new BitmapImage(new Uri(@"C:\Users\delongja\Documents\Visual Studio 2013\Projects\ReadCSV\Audi.jpg", UriKind.Relative));
-        myBrush.ImageSource = new BitmapImage(new Uri(mFileName, UriKind.Relative));
-
-        exampleRectangle.Fill = myBrush;
-
-        Canvas.SetRight(exampleRectangle, 0);
-        Canvas.SetTop(exampleRectangle, 0);
-
-        image_canvas.Children.Add(exampleRectangle);
-
-        private void draw_heatMap(double size)
+        // Save all of the application settings for future use
+        private void onClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-          
-         
-            Random random = new Random();
-            int x_pos = 0;
-            int y_pos = 0;
-            int x_step = (int)(image_canvas.ActualWidth / size);
-            int y_step = (int)(image_canvas.ActualHeight / size);
+            Properties.Settings.Default["TableBL"] = imageCalibrationPoints[0];
+            Properties.Settings.Default["TableTR"] = imageCalibrationPoints[1];
 
-            for (int col = 0; col < size; col++)
+            Properties.Settings.Default.Save();
+        }
+
+        private void click_calibrate(object sender, RoutedEventArgs e)
+        {
+            currentState = state.Calibration;
+            lblStatus.Text = "Click on the bottom left corner of the table";
+            numOfCalibrationPoints = 0;
+            selectorCanvas.Children.Clear();
+        }
+
+        private void redrawSelectionObjects(object sender, SizeChangedEventArgs e)
+        {
+            //Console.WriteLine("Size Change!");
+            if (pcb_image.Source != null)
             {
-                for (int row = 0; row < size; row++)
-                {
-                    Rectangle pixel = new Rectangle();
-                    pixel.Width = x_step;
-                    pixel.Height = y_step;
-
-                    Color temp = new Color();
-                    //int argb = Color.
-
-                    
-                    int sel = random.Next(100) % 3;
-
-                    switch (sel)
-                    {
-                        case 0:
-                            temp = Colors.Red;
-                            break;
-                        case 1:
-                            temp = Colors.Blue;
-                            break;
-                        case 2:
-                            temp = Colors.Yellow;
-                            break;
-                    }
-
-                    SolidColorBrush pixelFill = new SolidColorBrush(temp);
-
-                    pixel.Fill = pixelFill;
-                    pixel.Opacity = 0.8;
-
-                    Canvas.SetLeft(pixel, x_pos);
-                    Canvas.SetTop(pixel, y_pos);
-                    image_canvas.Children.Add(pixel);
-                    x_pos = x_pos + x_step;
-                }
-                x_pos = 0;
-                y_pos = y_pos + y_step;
+                calibrationPoints[0] = getRelativeImagePixel(pcb_image, imageCalibrationPoints[0]);
+                calibrationPoints[1] = getRelativeImagePixel(pcb_image, imageCalibrationPoints[1]);
+                DrawTableArea();
             }
         }
-         * */
-
-
     }
 }
