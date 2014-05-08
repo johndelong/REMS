@@ -85,7 +85,7 @@
 
 
                 <Button Name="btnCalibrate" Content="Calibrate" HorizontalAlignment="Left" Margin="10,93,0,0" VerticalAlignment="Top" Width="80" Height="22" Click="click_calibrate"/>
-                
+
                 <!--<TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="67" Margin="39,60,0,0"/>-->
             </Grid>
         </GroupBox>
@@ -102,14 +102,17 @@
 
         <GroupBox Header="Step Size" Margin="11,176,0,0" HorizontalAlignment="Left" Width="94" Height="115" VerticalAlignment="Top"  >
             <Grid>
-                <Label Content="X" Height="25"   VerticalAlignment="Top" Margin="10,10,52.4,0"  />
-                <TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="30" Margin="42,10,0,0"/>
+                <Label Content="X" Height="25" VerticalAlignment="Top" Margin="10,10,52.4,0"  />
+                <ni:NumericTextBoxInt32 Name="nsXStepSize" HorizontalAlignment="Left" Height="25" VerticalAlignment="Top" Width="39" Margin="33,11,0,0" Interval="1"
+                                         ValueChanged="nsValidator" />
 
                 <Label Content="Y" Height="25" VerticalAlignment="Top" Margin="10,35,52.4,0"  />
-                <TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="30" Margin="42,35,0,0"/>
+                <ni:NumericTextBoxInt32 Name="nsYStepSize" HorizontalAlignment="Left" Height="25" VerticalAlignment="Top" Width="39" Margin="33,36,0,0" Interval="1"
+                                         ValueChanged="nsValidator" />
 
                 <Label Content="Z" Height="25" VerticalAlignment="Top" Margin="10,61,52.8,0"  />
                 <TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="30" Margin="42,61,0,0"/>
+
             </Grid>
         </GroupBox>
 

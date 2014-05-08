@@ -16,6 +16,7 @@ using System.Windows.Shapes;
 using NationalInstruments;
 using REMS.classes;
 using System.Windows.Threading;
+using NationalInstruments.Controls;
 
 namespace REMS
 {
@@ -46,9 +47,13 @@ namespace REMS
         private Point[] canvasCalibrationPoints = new Point[2]; // which calibration points have been collected
         private Point[] canvasScanArea = new Point[2];
         private Point[] motorScanAreaPoints = new Point[2]; // the bounds for the motor to travel
+
+        private int motorXTravelDistance = 300;
+        private int motorYTravelDistance = 300;
+        private int motorZTravelDistance = 100;
         
 
-        private DispatcherTimer nextPositionTimer = new DispatcherTimer();
+        private DispatcherTimer nextPositionTimer;
 
         private double canvasXStepSize, canvasYStepSize;
 
@@ -418,7 +423,7 @@ namespace REMS
             {
                 currentState = state.Scanning;
                 updateComponentsByState(currentState);
-
+                nextPositionTimer = new DispatcherTimer();
                 nextPositionTimer.Tick += new EventHandler(moveMotors_Tick);
                 nextPositionTimer.Interval = new TimeSpan(0, 0, 1);
                 nextPositionTimer.Start();
@@ -429,8 +434,10 @@ namespace REMS
                 Console.WriteLine("Top Left: " + motorScanAreaPoints[0].X + "," + motorScanAreaPoints[0].Y + " Bottom Right " +
                                             motorScanAreaPoints[1].X + "," + motorScanAreaPoints[1].Y);
 
-                setupHeatMap(motorScanAreaPoints[1].X - motorScanAreaPoints[0].X,
-                    motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y);
+                double xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
+                double yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
+
+                setupHeatMap(xScanPoints, yScanPoints);
 
                 CDTimer.start();
             }
@@ -683,8 +690,8 @@ namespace REMS
             // Zoom in on the scan area
             imageCaptured.Source = cropImage(imageCaptured, canvasScanArea[0], canvasScanArea[1]);
 
-            canvasXStepSize = (canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X) / 300;
-            canvasYStepSize = (canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y) / 300;
+            canvasXStepSize = (canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X) / motorXTravelDistance;
+            canvasYStepSize = (canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y) / motorYTravelDistance;
 
             // Convert the bounds to an actual motor positions
             motorScanAreaPoints[0].X = Math.Round((canvasScanArea[0].X - canvasCalibrationPoints[0].X) / canvasXStepSize, 0, MidpointRounding.ToEven);
@@ -697,7 +704,9 @@ namespace REMS
             motorYPos = Convert.ToInt32(motorScanAreaPoints[0].Y);
 
             // Calculate how long it will take
-            int scanPoints = Convert.ToInt32((motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) * (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y));
+            double xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
+            double yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
+            int scanPoints = Convert.ToInt32( xScanPoints * yScanPoints );
             CDTimer = new CountdownTimer(lblCDTimer, scanPoints);
 
             lblXPosition.Text = motorXPos.ToString();
@@ -868,30 +877,31 @@ namespace REMS
             Console.WriteLine("Motor Pos:: X " + motorXPos +
                                     " Y " + motorYPos);
 
+            int row = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
+            int col = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
+
             // draw heat map pixel
-            drawHeatMapPixel(motorXPos - Convert.ToInt32(motorScanAreaPoints[0].X),
-                             motorYPos - Convert.ToInt32(motorScanAreaPoints[0].Y),
-                             Colors.Blue);
+            drawHeatMapPixel(row, col, Colors.Blue);
 
             // Determine the next scan position
             if(currentScanDirection == direction.South)
             {
-                nextY++;
+                nextY = nextY + nsYStepSize.Value;
                 if (nextY > motorScanAreaPoints[1].Y)
                 {
                     currentScanDirection = reverseDirection(currentScanDirection);
-                    nextY--;
-                    nextX++;
+                    nextY = nextY - nsYStepSize.Value;
+                    nextX = nextX + nsXStepSize.Value;
                 }
             }
             else if(currentScanDirection == direction.North)
             {
-                nextY--;
+                nextY = nextY - nsYStepSize.Value;
                 if (nextY < motorScanAreaPoints[0].Y)
                 {
                     currentScanDirection = reverseDirection(currentScanDirection);
-                    nextY++;
-                    nextX++;
+                    nextY = nextY + nsYStepSize.Value;
+                    nextX = nextX + nsXStepSize.Value;
                 }
             }
             
@@ -929,6 +939,15 @@ namespace REMS
                 return direction.West;
             else
                 return direction.East;
+        }
+
+        private void nsValidator(object sender, ValueChangedEventArgs<int> e)
+        {
+            if (e.NewValue < 1)
+            {
+                NumericTextBoxDouble numericStepper = sender as NumericTextBoxDouble;
+                numericStepper.Value = 1;
+            }
         }
     }
 }
