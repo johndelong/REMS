@@ -95,6 +95,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="classes\AnalyzeSynopsisData.cs" />
+    <Compile Include="classes\CountdownTimer.cs" />
     <Compile Include="classes\status.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
