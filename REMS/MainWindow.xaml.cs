@@ -51,7 +51,7 @@ namespace REMS
         private int motorXTravelDistance = 300;
         private int motorYTravelDistance = 300;
         private int motorZTravelDistance = 100;
-        
+
 
         private DispatcherTimer nextPositionTimer;
 
@@ -72,23 +72,36 @@ namespace REMS
         Point canvasMouseUpPos;
         int motorXPos, motorYPos, motorZPos;
 
+        private double xScanPoints = 0;
+        private double yScanPoints = 0;
+        private double zScanPoints = 0;
+
         AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(0);
         string mFileName;
+        //private FileStream fsLog = new FileStream("log.csv", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+        private StreamWriter swLog;
+        private StreamReader srLog;
+        
+        private Boolean mHeatMapPixelClicked = false;
 
         public MainWindow()
         {
             InitializeComponent();
             analyzeGrid.ItemsSource = LoadCollectionData();
-            //setupHeatMap(50, 50);
 
             //lblStatus.Text = status.Initial;
 
             // Load user/application settings
             imageCalibrationPoints[0] = (Point)Properties.Settings.Default["TableBL"];
             imageCalibrationPoints[1] = (Point)Properties.Settings.Default["TableTR"];
+            nsXStepSize.Value = (int)Properties.Settings.Default["nsXStepSize"];
+            nsYStepSize.Value = (int)Properties.Settings.Default["nsYStepSize"];
 
+            //swLog = new StreamWriter("log.csv");
+            //swLog = new StreamWriter(fsLog);
+            //swLog.AutoFlush = true;
+            //srLog = new StreamReader(fsLog);
 
-            
         }
 
         // TODO: Show current x,y,z location on main panel
@@ -131,95 +144,75 @@ namespace REMS
 
         // charting/plotting information
         // http://zone.ni.com/reference/en-XX/help/372636F-01/mstudiowebhelp/html/wpfgraphplotting/
-        private void button1_Click(object sender, RoutedEventArgs e)
+        private void populateGraph(int x, int y, int rows, int columns)
         {
-            Random random = new Random();
-
-            int numberOfPoints = 100;
-            AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(numberOfPoints);
-
-            for (int i = 0; i < numberOfPoints; i++)
+            int numberOfPoints = 461;
+            int lineNum = (x * rows) + y + 1;
+                
+            string line = getLineFromLog(lineNum);
+            if (line != null)
             {
-                analogWaveform.Samples[i].Value = random.NextDouble();
-            }
+                //AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(numberOfPoints);
 
-            graph1.DataSource = analogWaveform;
-
-            // generate intensity graph
-            // http://zone.ni.com/reference/en-XX/help/372636F-01/mstudiowebhelp/html/wpfintensitygraphplotting/
-
-
-            //intensityGraph1.DataSource = GetData(10);
-
-
-            colorHeatMap(50, 50);
-        }
-
-        //http://www.c-sharpcorner.com/uploadfile/mahesh/grid-in-wpf/
-        private void setupHeatMap(double x, double y)
-        {
-            RowDefinition rowDef;
-            ColumnDefinition colDef;
-
-            for (int lRow = 0; lRow <= y; lRow++)
-            {
-                rowDef = new RowDefinition();
-                heat_map.RowDefinitions.Insert(heat_map.RowDefinitions.Count, rowDef);
-                //Console.WriteLine(heat_map.RowDefinitions.IndexOf(rowDef).ToString());
-            }
-
-            for (int lCol = 0; lCol <= x; lCol++)
-            {
-                colDef = new ColumnDefinition();
-                heat_map.ColumnDefinitions.Insert(heat_map.ColumnDefinitions.Count, colDef);
-                //Console.WriteLine(heat_map.ColumnDefinitions.IndexOf(colDef).ToString());
-            }
-
-        }
-
-        private void colorHeatMap(int x, int y)
-        {
-            heat_map.Children.Clear();
-
-            Random random = new Random();
-            for (int lRow = 0; lRow < x; lRow++)
-            {
-                for (int lCol = 0; lCol < y; lCol++)
+                int[] data = new int[numberOfPoints];
+                var temp = line.Split(',');
+                for (int i = 3; i < temp.Length; i++)
                 {
+                    data[i - 3] = Convert.ToInt32(temp[i]);
+                }
 
-                    Rectangle pixel = new Rectangle();
-                    Color temp = new Color();
 
-                    int sel = random.Next(10) % 3;
+                Point[] myData = new Point[8];
+                myData[0] = new Point(0, 100);
+                myData[1] = new Point(82, 100);
+                myData[2] = new Point(82, 150);
+                myData[3] = new Point(216, 150);
+                myData[4] = new Point(216, 200);
+                myData[5] = new Point(960, 200);
+                myData[6] = new Point(960, 500);
+                myData[7] = new Point(1000, 500);
+                //int[] test = {1,2,3,4,5,5,5,5,4,4,4};
 
-                    switch (sel)
-                    {
-                        case 0:
-                            temp = Colors.Red;
-                            break;
-                        case 1:
-                            temp = Colors.Blue;
-                            break;
-                        case 2:
-                            temp = Colors.Yellow;
-                            break;
-                    }
+                //PlotData.DataContext = data;
+                //PlotThreshold.DataContext = myData;
+                graph1.Data[0] = data;
+                graph1.Data[1] = myData;
+                //graph1.DataSource = myData;
+            }
+            else
+            {
+                MessageBox.Show("No Data at " + x + " " + y);
+            }
 
-                    SolidColorBrush pixelFill = new SolidColorBrush(temp);
-                    pixel.Fill = pixelFill;
-                    pixel.Opacity = 0.8;
+            
+        }
 
-                    Grid.SetColumn(pixel, lCol);
-                    Grid.SetRow(pixel, lRow);
+        private string getLineFromLog(int lineNum)
+        {
+            using (srLog = new StreamReader("log.csv"))
+            {
+                for (int i = 1; i < lineNum; i++)
+                    srLog.ReadLine();
 
-                    heat_map.Children.Add(pixel);
-                    
+                string line = srLog.ReadLine();
+                srLog.Close();
+                return line;
+            }
+        }
+
+        static string ReadLines(Stream source, Encoding encoding)
+        {
+            using (StreamReader reader = new StreamReader(source, encoding))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    return line;
                 }
             }
+            return "";
         }
 
-
-        
         private void read_csv()
         {
             //var reader = new StreamReader(File.OpenRead(@"C:\Users\delongja\Documents\Visual Studio 2013\Projects\ReadCSV\SampleData.csv"));
@@ -395,9 +388,7 @@ namespace REMS
                 currentState = state.Initial;
                 updateComponentsByState(currentState);
                 imageCaptured.Source = null;
-                heat_map.Children.Clear();
-                heat_map.RowDefinitions.Clear();
-                heat_map.ColumnDefinitions.Clear();
+                mHeatMap.Clear();
                 canvasDrawing.Visibility = Visibility.Collapsed;
             }
         }
@@ -422,6 +413,9 @@ namespace REMS
             else if (currentState == state.Ready)
             {
                 currentState = state.Scanning;
+
+                canvasDrawing.Visibility = Visibility.Collapsed;
+
                 updateComponentsByState(currentState);
                 nextPositionTimer = new DispatcherTimer();
                 nextPositionTimer.Tick += new EventHandler(moveMotors_Tick);
@@ -434,11 +428,10 @@ namespace REMS
                 Console.WriteLine("Top Left: " + motorScanAreaPoints[0].X + "," + motorScanAreaPoints[0].Y + " Bottom Right " +
                                             motorScanAreaPoints[1].X + "," + motorScanAreaPoints[1].Y);
 
-                double xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
-                double yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
+                xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
+                yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
 
-                setupHeatMap(xScanPoints, yScanPoints);
-
+                mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
                 CDTimer.start();
             }
             else if (currentState == state.Stopped)
@@ -493,10 +486,38 @@ namespace REMS
                     read_csv();
                 }
 
-                if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
-                {
-                    open_image();
-                }
+                //if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
+                //{
+                //    open_image();
+                //}
+            }
+        }
+
+        private void click_capture_image(object sender, RoutedEventArgs e)
+        {
+            // Create OpenFileDialog 
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+
+            // Set filter for file extension and default file extension 
+            dlg.DefaultExt = ".jpg";
+            dlg.Filter = "JPG Files (*.jpg)|*.jpg|JPEG Files (*.jpeg)|*.jpeg|PNG Files (*.png)|*.png";
+
+            // Display OpenFileDialog by calling ShowDialog method 
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Get the selected file name and display in a TextBox 
+            if (result == true)
+            {
+                // Open document 
+                mFileName = dlg.FileName;
+                //textBox1.Text = mFilename;
+
+                //String[] tokens = mFileName.Split('.');
+
+                //if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
+                //{
+                open_image();
+                //}
             }
         }
 
@@ -665,10 +686,10 @@ namespace REMS
             if (imageCaptured.Source != null)
             {
                 // Convert from image location to canvas location
-                canvasCalibrationPoints[0] = getAspectRatioPosition(imageCalibrationPoints[0], 
+                canvasCalibrationPoints[0] = getAspectRatioPosition(imageCalibrationPoints[0],
                         imageCaptured.Source.Width, imageCaptured.Source.Height, imageCaptured.ActualWidth, imageCaptured.ActualHeight);
 
-                canvasCalibrationPoints[1] = getAspectRatioPosition(imageCalibrationPoints[1], 
+                canvasCalibrationPoints[1] = getAspectRatioPosition(imageCalibrationPoints[1],
                         imageCaptured.Source.Width, imageCaptured.Source.Height, imageCaptured.ActualWidth, imageCaptured.ActualHeight);
 
                 // Delete everything in the selectorCanvas
@@ -706,7 +727,7 @@ namespace REMS
             // Calculate how long it will take
             double xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
             double yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
-            int scanPoints = Convert.ToInt32( xScanPoints * yScanPoints );
+            int scanPoints = Convert.ToInt32(xScanPoints * yScanPoints);
             CDTimer = new CountdownTimer(lblCDTimer, scanPoints);
 
             lblXPosition.Text = motorXPos.ToString();
@@ -721,10 +742,33 @@ namespace REMS
         /// <param name="e"></param>
         private void onClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            //srLog.Close(); // close stream to log file
+
             Properties.Settings.Default["TableBL"] = imageCalibrationPoints[0];
             Properties.Settings.Default["TableTR"] = imageCalibrationPoints[1];
+            Properties.Settings.Default["nsXStepSize"] = nsXStepSize.Value;
+            Properties.Settings.Default["nsYStepSize"] = nsYStepSize.Value;
 
             Properties.Settings.Default.Save();
+        }
+
+        private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2) // for double-click, remove this condition if only want single click
+            {
+                Point cell = mHeatMap.getClickedCell(sender, e);
+                populateGraph((int)cell.X, (int)cell.Y, (int)xScanPoints, (int)yScanPoints);
+                mHeatMapPixelClicked = true;
+            }
+        }
+
+        private void click_heatMapMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (mHeatMapPixelClicked)
+            {
+                AnalyzeTab.IsSelected = true;
+                mHeatMapPixelClicked = false;
+            }
         }
 
 
@@ -867,6 +911,8 @@ namespace REMS
             int nextX = motorXPos;
             int nextY = motorYPos;
 
+            writeToFile(nextX, nextY, 0, getScannedData(461));
+
             // Update the motor position text
             lblXPosition.Text = nextX.ToString();
             lblYPosition.Text = nextY.ToString();
@@ -881,10 +927,11 @@ namespace REMS
             int col = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
 
             // draw heat map pixel
-            drawHeatMapPixel(row, col, Colors.Blue);
+            //drawHeatMapPixel(row, col, Colors.Blue);
+            mHeatMap.drawPixel(row, col, Colors.Blue);
 
             // Determine the next scan position
-            if(currentScanDirection == direction.South)
+            if (currentScanDirection == direction.South)
             {
                 nextY = nextY + nsYStepSize.Value;
                 if (nextY > motorScanAreaPoints[1].Y)
@@ -894,7 +941,7 @@ namespace REMS
                     nextX = nextX + nsXStepSize.Value;
                 }
             }
-            else if(currentScanDirection == direction.North)
+            else if (currentScanDirection == direction.North)
             {
                 nextY = nextY - nsYStepSize.Value;
                 if (nextY < motorScanAreaPoints[0].Y)
@@ -904,29 +951,12 @@ namespace REMS
                     nextX = nextX + nsXStepSize.Value;
                 }
             }
-            
+
             if (nextX > motorScanAreaPoints[1].X)
                 nextPositionTimer.Stop();
 
             motorXPos = nextX;
             motorYPos = nextY;
-        }
-
-        private void drawHeatMapPixel(int aCol, int aRow, Color aColor)
-        {
-            Rectangle pixel = new Rectangle();
-
-            SolidColorBrush pixelFill = new SolidColorBrush(aColor);
-            pixel.Fill = pixelFill;
-            pixel.Opacity = 0.8;
-
-            int tempX = motorXPos - Convert.ToInt32(motorScanAreaPoints[0].X);
-            int tempY = motorYPos - Convert.ToInt32(motorScanAreaPoints[0].Y);
-
-            Grid.SetColumn(pixel, aCol);
-            Grid.SetRow(pixel, aRow);
-
-            heat_map.Children.Add(pixel);
         }
 
         private direction reverseDirection(direction aDirection)
@@ -941,13 +971,58 @@ namespace REMS
                 return direction.East;
         }
 
+        /// <summary>
+        /// Ensures that the values entered into the numeric steppers are valid
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void nsValidator(object sender, ValueChangedEventArgs<int> e)
         {
+            // Step size cannot be less than 1
             if (e.NewValue < 1)
             {
-                NumericTextBoxDouble numericStepper = sender as NumericTextBoxDouble;
+                NumericTextBoxInt32 numericStepper = sender as NumericTextBoxInt32;
                 numericStepper.Value = 1;
             }
+        }
+
+        private int[] getScannedData(int aPoints)
+        {
+            Random rNum = new Random();
+            int[] data = new int[aPoints];
+
+            for (int i = 0; i < aPoints; i++)
+            {
+                data[i] = rNum.Next(110) - rNum.Next(40);
+                if (i > 82)
+                    data[i] += rNum.Next(60) - rNum.Next(20);
+                if(i > 216)
+                    data[i] += rNum.Next(60) - rNum.Next(20);
+            }
+
+            return data;
+        }
+
+        private void writeToFile(int x, int y, int z, int[] data)
+        {
+            using (swLog = new StreamWriter("log.csv", true))
+            {
+                swLog.Write(x.ToString() + ",");
+                swLog.Write(y.ToString() + ",");
+                swLog.Write(z.ToString() + ",");
+
+                for (int i = 0; i < data.Length; i++)
+                {
+                    swLog.Write(data[i].ToString());
+                    
+                    if (i + 1 < data.Length)
+                        swLog.Write(",");
+                }
+                
+                swLog.Write("\r\n");
+            }
+
+            swLog.Close();
         }
     }
 }

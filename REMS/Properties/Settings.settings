@@ -11,5 +11,11 @@
     <Setting Name="TableTR" Type="System.Windows.Point" Scope="User">
       <Value Profile="(Default)">300,0</Value>
     </Setting>
+    <Setting Name="nsXStepSize" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="nsYStepSize" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

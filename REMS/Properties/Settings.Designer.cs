@@ -58,5 +58,29 @@ namespace REMS.Properties {
                 this["TableTR"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int nsXStepSize {
+            get {
+                return ((int)(this["nsXStepSize"]));
+            }
+            set {
+                this["nsXStepSize"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int nsYStepSize {
+            get {
+                return ((int)(this["nsYStepSize"]));
+            }
+            set {
+                this["nsYStepSize"] = value;
+            }
+        }
     }
 }
