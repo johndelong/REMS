@@ -128,7 +128,7 @@
                     x:Name="gridResultsTab"
                     >
 
-                    <Image Name="imageCaptured" SizeChanged="redrawSelectionObjects" />
+                    <Image Name="imageCaptured" SizeChanged="imageResized" />
                     <!--<Grid Name="heat_map" ShowGridLines="true" Opacity=".5" MouseDown="click_heatMapPixel"
                           Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>-->
 

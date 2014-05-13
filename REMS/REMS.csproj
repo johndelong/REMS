@@ -95,10 +95,10 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="classes\AnalyzeSynopsisData.cs" />
+    <Compile Include="classes\DataTypes.cs" />
     <Compile Include="classes\CountdownTimer.cs" />
     <Compile Include="classes\HeatMap.cs" />
-    <Compile Include="classes\status.cs" />
+    <Compile Include="classes\Utilities.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

@@ -28,14 +28,16 @@ namespace REMS.classes
             _label.Text = _time.ToString("c");
         }
 
-        public void start()
+        public void Start()
         {
             _timer.Start();
+            Enabled = true;
         }
 
-        public void stop()
+        public void Stop()
         {
             _timer.Stop();
+            Enabled = false;
         }
 
         private void timer_tick(object sender, EventArgs e)
@@ -44,12 +46,14 @@ namespace REMS.classes
 
             if (_time == TimeSpan.Zero)
             {
-                _timer.Stop();
+                Stop();
             }
             else
             {
                 _time = _time.Add(TimeSpan.FromSeconds(-1));
             }
-        }        
+        }
+
+        public bool Enabled { get; set; }
     }
 }

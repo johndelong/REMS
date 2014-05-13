@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,62 +24,51 @@ namespace REMS
     /// </summary>
     public partial class MainWindow : Window
     {
-        private enum state : int
-        {
-            Initial,
-            Ready,
-            Calibration,
-            Stopped,
-            Scanning,
-            Done
-        }
+        
 
-        private enum direction : int
-        {
-            North,
-            South,
-            East,
-            West
-        }
-
+        // Calibration Variables
         private Point[] imageCalibrationPoints = new Point[2]; // where actually on the image is the calibration points
         private Point[] canvasCalibrationPoints = new Point[2]; // which calibration points have been collected
+        private Boolean mCalibrationSet = false;
+
         private Point[] canvasScanArea = new Point[2];
         private Point[] motorScanAreaPoints = new Point[2]; // the bounds for the motor to travel
 
         private int motorXTravelDistance = 300;
         private int motorYTravelDistance = 300;
-        private int motorZTravelDistance = 100;
+        //private int motorZTravelDistance = 100;
 
-
-        private DispatcherTimer nextPositionTimer;
-
+        // Timers
+        private DispatcherTimer simulatorTimer;
+        private CountdownTimer CDTimer;
+        
         private double canvasXStepSize, canvasYStepSize;
 
         private int numOfCalibrationPoints = 0;
 
         private Boolean imageLoaded = false;
         public Boolean scanAreaSet = false;
-        private state currentState = state.Initial;
-        private direction currentScanDirection = direction.South;
-        private ImageSource loadedImage;
+        private Constants.state currentState = Constants.state.Initial;
+        private Constants.direction currentScanDirection = Constants.direction.South;
+        
+        private ImageSource mLoadedImage;
 
-        CountdownTimer CDTimer;
+        
 
         bool mouseDown = false; // Set to 'true' when mouse is held down.
         Point canvasMouseDownPos; // The point where the mouse button was clicked down on the image.
         Point canvasMouseUpPos;
         int motorXPos, motorYPos, motorZPos;
-
+        
         private double xScanPoints = 0;
         private double yScanPoints = 0;
-        private double zScanPoints = 0;
+        //private double zScanPoints = 0;
 
-        AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(0);
-        string mFileName;
-        //private FileStream fsLog = new FileStream("log.csv", FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        private StreamWriter swLog;
-        private StreamReader srLog;
+        //AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(0);
+        
+        // File Names
+        private string mFileName = "";
+        private string mLogFileName = "log.csv";
         
         private Boolean mHeatMapPixelClicked = false;
 
@@ -91,11 +79,7 @@ namespace REMS
 
             //lblStatus.Text = status.Initial;
 
-            // Load user/application settings
-            imageCalibrationPoints[0] = (Point)Properties.Settings.Default["TableBL"];
-            imageCalibrationPoints[1] = (Point)Properties.Settings.Default["TableTR"];
-            nsXStepSize.Value = (int)Properties.Settings.Default["nsXStepSize"];
-            nsYStepSize.Value = (int)Properties.Settings.Default["nsYStepSize"];
+            loadUserPreferences();
 
             //swLog = new StreamWriter("log.csv");
             //swLog = new StreamWriter(fsLog);
@@ -138,18 +122,12 @@ namespace REMS
             return authors;
         }
 
-        // saving user settings (preferences)
-        // http://stackoverflow.com/questions/3784477/c-sharp-approach-for-saving-user-settings-in-a-wpf-application
-
-
-        // charting/plotting information
-        // http://zone.ni.com/reference/en-XX/help/372636F-01/mstudiowebhelp/html/wpfgraphplotting/
         private void populateGraph(int x, int y, int rows, int columns)
         {
             int numberOfPoints = 461;
             int lineNum = (x * rows) + y + 1;
                 
-            string line = getLineFromLog(lineNum);
+            string line = Logger.getLineFromFile(mLogFileName, lineNum);
             if (line != null)
             {
                 //AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(numberOfPoints);
@@ -171,96 +149,22 @@ namespace REMS
                 myData[5] = new Point(960, 200);
                 myData[6] = new Point(960, 500);
                 myData[7] = new Point(1000, 500);
-                //int[] test = {1,2,3,4,5,5,5,5,4,4,4};
-
-                //PlotData.DataContext = data;
-                //PlotThreshold.DataContext = myData;
+                
                 graph1.Data[0] = data;
                 graph1.Data[1] = myData;
-                //graph1.DataSource = myData;
             }
             else
             {
                 MessageBox.Show("No Data at " + x + " " + y);
             }
-
-            
         }
 
-        private string getLineFromLog(int lineNum)
-        {
-            using (srLog = new StreamReader("log.csv"))
-            {
-                for (int i = 1; i < lineNum; i++)
-                    srLog.ReadLine();
-
-                string line = srLog.ReadLine();
-                srLog.Close();
-                return line;
-            }
-        }
-
-        static string ReadLines(Stream source, Encoding encoding)
-        {
-            using (StreamReader reader = new StreamReader(source, encoding))
-            {
-                string line;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    return line;
-                }
-            }
-            return "";
-        }
-
-        private void read_csv()
-        {
-            //var reader = new StreamReader(File.OpenRead(@"C:\Users\delongja\Documents\Visual Studio 2013\Projects\ReadCSV\SampleData.csv"));
-            var reader = new StreamReader(File.OpenRead(mFileName));
-            List<List<string>> Matrix = new List<List<string>>();
-
-            while (!reader.EndOfStream)
-            {
-                var line = reader.ReadLine();
-                var values = line.Split(',');
-
-                Matrix.Add(values.ToList());
-            }
-
-            Console.WriteLine("Here it comes!");
-            //Console.WriteLine(Matrix[1][1]);
-
-            foreach (var row in Matrix)
-            {
-                foreach (var val in row)
-                {
-                    Console.Write(val);
-                }
-                Console.Write('\n');
-            }
-
-            /*if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                pictureBox1.Load(openFileDialog1.FileName);
-            }*/
-        }
-
-        private void open_image()
-        {
-            loadedImage = null;
-            BitmapImage image = new BitmapImage(new Uri(mFileName));
-            loadedImage = ConvertBitmapTo96DPI(image);
-            imageCaptured.Source = loadedImage;
-            imageLoaded = true;
-
-            canvasDrawing.Visibility = Visibility.Visible;
-        }
-
-        private void updateComponentsByState(state aState)
+        private void transitionToState(Constants.state aState)
         {
             switch (aState)
             {
-                case state.Initial:
+                case Constants.state.Initial:
+                    // Update Buttons
                     btnCancel.Content = "Cancel";
                     btnCancel.Background = null;
                     btnCancel.IsEnabled = false;
@@ -269,10 +173,43 @@ namespace REMS
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
 
-                    lblStatus.Text = status.Initial;
+                    // Update Status
+                    lblStatus.Text = Constants.StatusInitial;
+
+                    // Load user preferences
+                    //loadUserPreferences();
+                    redrawSelectionObjects();
+
+                    // Show captured image
+                    imageCaptured.Source = mLoadedImage;
+                    canvasDrawing.Visibility = Visibility.Visible;
+
+                    // Delete everything in the selectorCanvas
+                    canvasDrawing.Children.Clear();
+
+                    // Draw the motor travel area
+                    drawMotorTravelArea();
                     break;
 
-                case state.Ready:
+                case Constants.state.Calibration:
+                    // Update Status
+                    lblStatus.Text = Constants.StatusCalibration1;
+
+                    // Reset the number of calibration points clicked
+                    numOfCalibrationPoints = 0;
+
+                    // Delete everything in the selectorCanvas
+                    canvasDrawing.Children.Clear();
+
+                    if (mCalibrationSet)
+                    {
+                        // Draw the table area
+                        drawMotorTravelArea();
+                    }
+                    break;
+
+                case Constants.state.Ready:
+                    // Update Buttons
                     btnCancel.Content = "Cancel";
                     btnCancel.Background = null;
                     btnCancel.IsEnabled = true;
@@ -281,10 +218,18 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = true;
 
-                    lblStatus.Text = status.Ready;
+                    // Update Status
+                    lblStatus.Text = Constants.StatusReady;
+
+                    // Hide drawing canvas
+                    canvasDrawing.Visibility = Visibility.Collapsed;
+
+                    // Set the area of where to scan
+                    setScanArea();
                     break;
 
-                case state.Scanning:
+                case Constants.state.Scanning:
+                    // Update Buttons
                     btnCancel.Content = "Stop";
                     btnCancel.Background = Brushes.Red;
                     btnCancel.IsEnabled = true;
@@ -293,10 +238,21 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = false;
 
-                    lblStatus.Text = status.Scanning;
+                    // Update Status
+                    lblStatus.Text = Constants.StatusScanning;
+
+                    // Hide drawing canvas
+                    canvasDrawing.Visibility = Visibility.Collapsed;
+
+                    // Initialize the heatmap
+                    mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
+                    
+                    // Start the simulator
+                    startSimulator();
                     break;
 
-                case state.Stopped:
+                case Constants.state.Stopped:
+                    // Update Buttons
                     btnCancel.Content = "Reset";
                     btnCancel.Background = null;
                     btnCancel.IsEnabled = true;
@@ -305,39 +261,25 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = true;
 
-                    lblStatus.Text = status.Stopped;
+                    // Update Status
+                    lblStatus.Text = Constants.StatusStopped;
+
+                    // Stop the simulator
+                    simulatorTimer.Stop();
+
+                    // Stop the count down timer
+                    CDTimer.Stop();
+
+                    // Remmove captured image and heat map
+                    canvasDrawing.Visibility = Visibility.Collapsed;
+                    imageCaptured.Source = null;
+                    mHeatMap.Clear();
+                    
                     break;
             }
         }
 
-        /// <summary>
-        /// Assumes has top left and bottom right corners
-        /// </summary>
-        /// <param name="aImage"></param>
-        /// <param name="aMouseDown"></param>
-        /// <param name="aMouseUp"></param>
-        /// <returns></returns>
-        public ImageSource cropImage(Image aImage, Point aMouseDown, Point aMouseUp)
-        {
-
-            // Convert selected coordinates to actual image coordinates
-            Double Xbegin = (aMouseDown.X * aImage.Source.Width) / aImage.ActualWidth;
-            Double Ybegin = (aMouseDown.Y * aImage.Source.Height) / aImage.ActualHeight;
-            Double Xend = (aMouseUp.X * aImage.Source.Width) / aImage.ActualWidth;
-            Double Yend = (aMouseUp.Y * aImage.Source.Height) / aImage.ActualHeight;
-
-            // Convert coordinates to integers
-            int xPos = Convert.ToInt32(Math.Round(Xbegin, 0, MidpointRounding.ToEven));
-            int yPos = Convert.ToInt32(Math.Round(Ybegin, 0, MidpointRounding.ToEven));
-            int width = Convert.ToInt32(Math.Round(Xend - Xbegin, 0, MidpointRounding.ToEven));
-            int height = Convert.ToInt32(Math.Round(Yend - Ybegin, 0, MidpointRounding.ToEven));
-
-            // Create the cropped image
-            var fullImage = aImage.Source;
-            var croppedImage = new CroppedBitmap((BitmapSource)fullImage, new Int32Rect(xPos, yPos, width, height));
-
-            return croppedImage;
-        }
+        
 
 
 
@@ -356,10 +298,8 @@ namespace REMS
         /// <param name="e"></param>
         private void click_calibrate(object sender, RoutedEventArgs e)
         {
-            currentState = state.Calibration;
-            lblStatus.Text = "Click on the bottom left corner of the table";
-            numOfCalibrationPoints = 0;
-            canvasDrawing.Children.Clear();
+            currentState = Constants.state.Calibration;
+            transitionToState(currentState);
         }
 
         /// <summary>
@@ -369,27 +309,25 @@ namespace REMS
         /// <param name="e"></param>
         private void click_cancel(object sender, RoutedEventArgs e)
         {
-            if (currentState == state.Ready)
+            if (currentState == Constants.state.Calibration)
             {
-                currentState = state.Initial;
-                updateComponentsByState(currentState);
-                imageCaptured.Source = loadedImage;
-                canvasDrawing.Visibility = Visibility.Visible;
+                currentState = Constants.state.Initial;
+                transitionToState(currentState);
             }
-            else if (currentState == state.Scanning)
+            else if (currentState == Constants.state.Ready)
             {
-                currentState = state.Stopped;
-                updateComponentsByState(currentState);
-                nextPositionTimer.Stop();
-                CDTimer.stop();
+                currentState = Constants.state.Initial;
+                transitionToState(currentState);
             }
-            else if (currentState == state.Stopped)
+            else if (currentState == Constants.state.Scanning)
             {
-                currentState = state.Initial;
-                updateComponentsByState(currentState);
-                imageCaptured.Source = null;
-                mHeatMap.Clear();
-                canvasDrawing.Visibility = Visibility.Collapsed;
+                currentState = Constants.state.Stopped;
+                transitionToState(currentState);
+            }
+            else if (currentState == Constants.state.Stopped)
+            {
+                currentState = Constants.state.Initial;
+                transitionToState(currentState);
             }
         }
 
@@ -400,58 +338,25 @@ namespace REMS
         /// <param name="e"></param>
         private void click_accept(object sender, RoutedEventArgs e)
         {
-            // transitionning to READY state
-            if (currentState == state.Initial && scanAreaSet)
+            if (currentState == Constants.state.Initial && scanAreaSet)
             {
-                currentState = state.Ready;
-                updateComponentsByState(currentState);
-
-                canvasDrawing.Visibility = Visibility.Collapsed;
-                setScanArea();
+                currentState = Constants.state.Ready;
+                transitionToState(currentState);
             }
-            // transitioning to SCANNING state
-            else if (currentState == state.Ready)
+            else if (currentState == Constants.state.Ready)
             {
-                currentState = state.Scanning;
-
-                canvasDrawing.Visibility = Visibility.Collapsed;
-
-                updateComponentsByState(currentState);
-                nextPositionTimer = new DispatcherTimer();
-                nextPositionTimer.Tick += new EventHandler(moveMotors_Tick);
-                nextPositionTimer.Interval = new TimeSpan(0, 0, 1);
-                nextPositionTimer.Start();
-
-                Console.WriteLine("Scan Area:: Width " + (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) +
-                                        "Height " + (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y));
-
-                Console.WriteLine("Top Left: " + motorScanAreaPoints[0].X + "," + motorScanAreaPoints[0].Y + " Bottom Right " +
-                                            motorScanAreaPoints[1].X + "," + motorScanAreaPoints[1].Y);
-
-                xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
-                yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
-
-                mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
-                CDTimer.start();
+                currentState = Constants.state.Scanning;
+                transitionToState(currentState);
             }
-            else if (currentState == state.Stopped)
+            else if (currentState == Constants.state.Stopped)
             {
-                currentState = state.Scanning;
-                updateComponentsByState(currentState);
-                nextPositionTimer.Start();
-                CDTimer.start();
+                currentState = Constants.state.Scanning;
+                transitionToState(currentState);
             }
-            // transitioning to INITIAL state
-            else if (currentState == state.Calibration)
+            else if (currentState == Constants.state.Calibration)
             {
-                currentState = state.Initial;
-                updateComponentsByState(currentState);
-
-                // Delete everything in the selectorCanvas
-                canvasDrawing.Children.Clear();
-
-                // Draw the table area
-                DrawAreaRectangle(canvasDrawing, canvasCalibrationPoints[0].X, canvasCalibrationPoints[0].Y, canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X, canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y, Brushes.Blue);
+                currentState = Constants.state.Initial;
+                transitionToState(currentState);
             }
         }
 
@@ -483,7 +388,7 @@ namespace REMS
 
                 if (tokens[1] == "csv")
                 {
-                    read_csv();
+                    Logger.read_csv("Test.csv");
                 }
 
                 //if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
@@ -516,7 +421,12 @@ namespace REMS
 
                 //if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
                 //{
-                open_image();
+
+
+                mLoadedImage = Imaging.openImageSource(mFileName);
+                imageCaptured.Source = mLoadedImage;
+                imageLoaded = true;
+                canvasDrawing.Visibility = Visibility.Visible;
                 //}
             }
         }
@@ -543,61 +453,63 @@ namespace REMS
             canvasMouseDownPos = e.GetPosition(canvasDrawing);
 
             //Console.WriteLine("X: " + canvasMouseDownPos.X + " Y: " + canvasMouseDownPos.Y);
-
-            if (imageLoaded && currentState == state.Initial)
+            if(imageLoaded)
             {
-                // Only draw the scan area if we are within the table
-                // calibration area
-                if (canvasMouseDownPos.X >= canvasCalibrationPoints[0].X &&
-                    canvasMouseDownPos.Y >= canvasCalibrationPoints[0].Y &&
-                    canvasMouseDownPos.X <= canvasCalibrationPoints[1].X &&
-                    canvasMouseDownPos.Y <= canvasCalibrationPoints[1].Y)
+                if (currentState == Constants.state.Initial)
                 {
-                    mouseDown = true;
-                    //DrawScanArea();
-
-                    // The area selection will always be in position 1
-                    if (canvasDrawing.Children.Count > 1)
+                    // Only draw the scan area if we are within the table
+                    // calibration area
+                    if (canvasMouseDownPos.X >= canvasCalibrationPoints[0].X &&
+                        canvasMouseDownPos.Y >= canvasCalibrationPoints[0].Y &&
+                        canvasMouseDownPos.X <= canvasCalibrationPoints[1].X &&
+                        canvasMouseDownPos.Y <= canvasCalibrationPoints[1].Y)
                     {
-                        canvasDrawing.Children.RemoveAt(1);
+                        mouseDown = true;
+                        //DrawScanArea();
+
+                        // The area selection will always be in position 1
+                        if (canvasDrawing.Children.Count > 1)
+                        {
+                            canvasDrawing.Children.RemoveAt(1);
+                        }
+
+                        Draw.Rectangle(canvasDrawing, 0, 0, 0, 0, Brushes.Red, true);
+                    }
+                }
+                else if (currentState == Constants.state.Calibration)
+                {
+                    numOfCalibrationPoints++;
+
+                    if (numOfCalibrationPoints <= 2)
+                    {
+                        Draw.Circle(canvasDrawing, e.GetPosition(canvasDrawing));
                     }
 
-                    DrawAreaRectangle(canvasDrawing, 0, 0, 0, 0, Brushes.Red, true);
-                }
-            }
-            else if (currentState == state.Calibration)
-            {
-                numOfCalibrationPoints++;
+                    if (numOfCalibrationPoints == 1)
+                    {
+                        canvasCalibrationPoints[0] = e.GetPosition(imageCaptured);
 
-                if (numOfCalibrationPoints <= 2)
-                {
-                    DrawCircle(canvasDrawing, e.GetPosition(canvasDrawing));
-                }
+                        lblStatus.Text = "Now click on the top right corner of the table";
 
-                if (numOfCalibrationPoints == 1)
-                {
-                    canvasCalibrationPoints[0] = e.GetPosition(imageCaptured);
+                        btnCancel.IsEnabled = true;
+                        btnAccept.IsEnabled = false;
+                    }
+                    else if (numOfCalibrationPoints == 2)
+                    {
+                        canvasCalibrationPoints[1] = e.GetPosition(imageCaptured);
 
-                    lblStatus.Text = "Now click on the top right corner of the table";
+                        // Make sure that we always have the bottom left and top right corners
+                        canvasCalibrationPoints = Utilities.determineOpositeCorners(canvasCalibrationPoints[0], canvasCalibrationPoints[1]);
 
-                    btnCancel.IsEnabled = true;
-                    btnAccept.IsEnabled = false;
-                }
-                else if (numOfCalibrationPoints == 2)
-                {
-                    canvasCalibrationPoints[1] = e.GetPosition(imageCaptured);
+                        imageCalibrationPoints[0] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[0], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
+                            imageCaptured.Source.Width, imageCaptured.Source.Height);
 
-                    // Make sure that we always have the bottom left and top right corners
-                    canvasCalibrationPoints = determineOpositeCorners(canvasCalibrationPoints[0], canvasCalibrationPoints[1]);
+                        imageCalibrationPoints[1] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[1], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
+                            imageCaptured.Source.Width, imageCaptured.Source.Height);
 
-                    imageCalibrationPoints[0] = getAspectRatioPosition(canvasCalibrationPoints[0], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
-                        imageCaptured.Source.Width, imageCaptured.Source.Height);
-
-                    imageCalibrationPoints[1] = getAspectRatioPosition(canvasCalibrationPoints[1], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
-                        imageCaptured.Source.Width, imageCaptured.Source.Height);
-
-                    lblStatus.Text = "Click 'Accept' if rectangle matches table";
-                    btnAccept.IsEnabled = true;
+                        lblStatus.Text = "Click 'Accept' if rectangle matches table";
+                        btnAccept.IsEnabled = true;
+                    }
                 }
             }
         }
@@ -611,7 +523,7 @@ namespace REMS
         {
             canvasMouseUpPos = e.GetPosition(imageCaptured);
 
-            if (imageLoaded && currentState == state.Initial)
+            if (imageLoaded && currentState == Constants.state.Initial)
             {
                 mouseDown = false;
 
@@ -680,24 +592,29 @@ namespace REMS
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void redrawSelectionObjects(object sender, SizeChangedEventArgs e)
+        private void redrawSelectionObjects()
         {
             // Only resize stuff if an image has been loaded
             if (imageCaptured.Source != null)
             {
                 // Convert from image location to canvas location
-                canvasCalibrationPoints[0] = getAspectRatioPosition(imageCalibrationPoints[0],
+                canvasCalibrationPoints[0] = Imaging.getAspectRatioPosition(imageCalibrationPoints[0],
                         imageCaptured.Source.Width, imageCaptured.Source.Height, imageCaptured.ActualWidth, imageCaptured.ActualHeight);
 
-                canvasCalibrationPoints[1] = getAspectRatioPosition(imageCalibrationPoints[1],
+                canvasCalibrationPoints[1] = Imaging.getAspectRatioPosition(imageCalibrationPoints[1],
                         imageCaptured.Source.Width, imageCaptured.Source.Height, imageCaptured.ActualWidth, imageCaptured.ActualHeight);
 
                 // Delete everything in the selectorCanvas
                 canvasDrawing.Children.Clear();
 
                 // Draw the table area
-                DrawAreaRectangle(canvasDrawing, canvasCalibrationPoints[0].X, canvasCalibrationPoints[0].Y, canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X, canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y, Brushes.Blue);
+                drawMotorTravelArea();
             }
+        }
+
+        private void imageResized(object sender, SizeChangedEventArgs e)
+        {
+            redrawSelectionObjects();
         }
 
         /// <summary>
@@ -706,10 +623,10 @@ namespace REMS
         private void setScanArea()
         {
             // Crop down the image to the selected region
-            canvasScanArea = determineOpositeCorners(canvasMouseDownPos, canvasMouseUpPos);
+            canvasScanArea = Utilities.determineOpositeCorners(canvasMouseDownPos, canvasMouseUpPos);
 
             // Zoom in on the scan area
-            imageCaptured.Source = cropImage(imageCaptured, canvasScanArea[0], canvasScanArea[1]);
+            imageCaptured.Source = Imaging.cropImage(imageCaptured, canvasScanArea[0], canvasScanArea[1]);
 
             canvasXStepSize = (canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X) / motorXTravelDistance;
             canvasYStepSize = (canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y) / motorYTravelDistance;
@@ -724,9 +641,11 @@ namespace REMS
             motorXPos = Convert.ToInt32(motorScanAreaPoints[0].X);
             motorYPos = Convert.ToInt32(motorScanAreaPoints[0].Y);
 
+            // Update the scan area width and length
+            xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
+            yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
+
             // Calculate how long it will take
-            double xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
-            double yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
             int scanPoints = Convert.ToInt32(xScanPoints * yScanPoints);
             CDTimer = new CountdownTimer(lblCDTimer, scanPoints);
 
@@ -744,12 +663,9 @@ namespace REMS
         {
             //srLog.Close(); // close stream to log file
 
-            Properties.Settings.Default["TableBL"] = imageCalibrationPoints[0];
-            Properties.Settings.Default["TableTR"] = imageCalibrationPoints[1];
-            Properties.Settings.Default["nsXStepSize"] = nsXStepSize.Value;
-            Properties.Settings.Default["nsYStepSize"] = nsYStepSize.Value;
+            saveUserPreferences();
 
-            Properties.Settings.Default.Save();
+            
         }
 
         private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
@@ -780,138 +696,29 @@ namespace REMS
          * 
          **/
 
-        /// <summary>
-        /// Converts bitmap images to 96DPI.
-        /// 
-        /// This function is required so that all images are of the same resolution
-        /// Original: http://social.msdn.microsoft.com/Forums/vstudio/en-US/35db45e3-ebd6-4981-be57-2efd623ea439/wpf-bitmapsource-dpi-change
-        /// </summary>
-        /// <param name="bitmapImage"></param>
-        /// <returns></returns>
-        public static BitmapSource ConvertBitmapTo96DPI(BitmapImage bitmapImage)
+        private void drawMotorTravelArea()
         {
-            double dpi = 96;
-            int width = bitmapImage.PixelWidth;
-            int height = bitmapImage.PixelHeight;
-
-            int stride = width * 4; // 4 bytes per pixel
-            byte[] pixelData = new byte[stride * height];
-            bitmapImage.CopyPixels(pixelData, stride, 0);
-
-            return BitmapSource.Create(width, height, dpi, dpi, PixelFormats.Bgra32, null, pixelData, stride);
-        }
-
-        /// <summary>
-        /// Draws a rectange with a boarder and clear background 
-        /// </summary>
-        /// <param name="aDrawingCanvas"></param>
-        /// <param name="aX"></param>
-        /// <param name="aY"></param>
-        /// <param name="aWidth"></param>
-        /// <param name="aHeight"></param>
-        /// <param name="aColor"></param>
-        /// <param name="aDashedLine"></param>
-        private void DrawAreaRectangle(Canvas aDrawingCanvas, double aX, double aY, double aWidth, double aHeight, Brush aColor, Boolean aDashedLine = false)
-        {
-            Shape Rendershape = new Rectangle();
-            Rendershape.Stroke = aColor;
-            Rendershape.StrokeThickness = 3;
-
-            if (aDashedLine)
-            {
-                Rendershape.StrokeDashArray = new DoubleCollection() { 2, 1 };
-            }
-
-            Canvas.SetLeft(Rendershape, aX);
-            Canvas.SetTop(Rendershape, aY);
-            Rendershape.Height = aHeight;
-            Rendershape.Width = aWidth;
-
-            aDrawingCanvas.Children.Add(Rendershape);
-        }
-
-        /// <summary>
-        /// Draws a circle at a specific location
-        /// </summary>
-        /// <param name="aLocation"></param>
-        private void DrawCircle(Canvas aDrawingCanvas, Point aLocation)
-        {
-            Shape Rendershape = new Ellipse() { Height = 20, Width = 20 };
-            Rendershape.Fill = Brushes.Blue;
-            Canvas.SetLeft(Rendershape, aLocation.X - 10);
-            Canvas.SetTop(Rendershape, aLocation.Y - 10);
-            aDrawingCanvas.Children.Add(Rendershape);
-        }
-
-        /// <summary>
-        /// From a specific location, determines location on image/canvas using aspect ration
-        /// </summary>
-        /// <param name="aImage"></param>
-        /// <param name="aLocation"></param>
-        /// <returns></returns>
-        private Point getAspectRatioPosition(Point aLocation, double aFromWidth, double aFromHeight, double aToWidth, double aToHeight)
-        {
-            // Take current location and convert to actual image location
-            Double dblXPos = (aLocation.X * aToWidth) / aFromWidth;
-            Double dblYPos = (aLocation.Y * aToHeight) / aFromHeight;
-
-            // Convert coordinates to integers
-            //double xPos = Math.Round(dblXPos, 0, MidpointRounding.ToEven);
-            //double yPos = Math.Round(dblYPos, 0, MidpointRounding.ToEven);
-
-            return new Point(dblXPos, dblYPos);
-        }
-
-        /// <summary>
-        /// Given to points, this function returns the top left and bottom right corner
-        /// of the rectangle
-        /// </summary>
-        /// <param name="aPoint1"></param>
-        /// <param name="aPoint2"></param>
-        /// <returns></returns>
-        private Point[] determineOpositeCorners(Point aPoint1, Point aPoint2)
-        {
-            Point topLeft = new Point();
-            Point bottomRight = new Point();
-            Point[] corners = new Point[2];
-
-            if (aPoint1.X < aPoint2.X && aPoint1.Y < aPoint2.Y) // top left to bottom right
-            {
-                topLeft = aPoint1;
-                bottomRight = aPoint2;
-            }
-            else if (aPoint1.X > aPoint2.X && aPoint1.Y > aPoint2.Y) // bottom right to top left
-            {
-                topLeft = aPoint2;
-                bottomRight = aPoint1;
-            }
-            else if (aPoint1.X > aPoint2.X && aPoint1.Y < aPoint2.Y) // top right to bottom left
-            {
-                topLeft.X = aPoint2.X;
-                topLeft.Y = aPoint1.Y;
-                bottomRight.X = aPoint1.X;
-                bottomRight.Y = aPoint2.Y;
-            }
-            else if (aPoint1.X < aPoint2.X && aPoint1.Y > aPoint2.Y) // bottom left to top right
-            {
-                topLeft.X = aPoint1.X;
-                topLeft.Y = aPoint2.Y;
-                bottomRight.X = aPoint2.X;
-                bottomRight.Y = aPoint1.Y;
-            }
-
-            corners[0] = topLeft;
-            corners[1] = bottomRight;
-            return corners;
+            // Draw the table area
+            Draw.Rectangle(canvasDrawing,
+                canvasCalibrationPoints[0].X,
+                canvasCalibrationPoints[0].Y,
+                canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X,
+                canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y,
+                Brushes.Blue);
         }
 
         private void moveMotors_Tick(object sender, EventArgs e)
         {
+            // Start the count down timer if it is
+            // not already started
+            if(!CDTimer.Enabled)
+                CDTimer.Start();
+
             // Move the motors to the next location
             int nextX = motorXPos;
             int nextY = motorYPos;
 
-            writeToFile(nextX, nextY, 0, getScannedData(461));
+            Logger.writeToFile(mLogFileName, nextX, nextY, 0, getScannedData(461));
 
             // Update the motor position text
             lblXPosition.Text = nextX.ToString();
@@ -931,44 +738,32 @@ namespace REMS
             mHeatMap.drawPixel(row, col, Colors.Blue);
 
             // Determine the next scan position
-            if (currentScanDirection == direction.South)
+            if (currentScanDirection == Constants.direction.South)
             {
                 nextY = nextY + nsYStepSize.Value;
                 if (nextY > motorScanAreaPoints[1].Y)
                 {
-                    currentScanDirection = reverseDirection(currentScanDirection);
+                    currentScanDirection = Utilities.reverseDirection(currentScanDirection);
                     nextY = nextY - nsYStepSize.Value;
                     nextX = nextX + nsXStepSize.Value;
                 }
             }
-            else if (currentScanDirection == direction.North)
+            else if (currentScanDirection == Constants.direction.North)
             {
                 nextY = nextY - nsYStepSize.Value;
                 if (nextY < motorScanAreaPoints[0].Y)
                 {
-                    currentScanDirection = reverseDirection(currentScanDirection);
+                    currentScanDirection = Utilities.reverseDirection(currentScanDirection);
                     nextY = nextY + nsYStepSize.Value;
                     nextX = nextX + nsXStepSize.Value;
                 }
             }
 
             if (nextX > motorScanAreaPoints[1].X)
-                nextPositionTimer.Stop();
+                simulatorTimer.Stop();
 
             motorXPos = nextX;
             motorYPos = nextY;
-        }
-
-        private direction reverseDirection(direction aDirection)
-        {
-            if (aDirection == direction.North)
-                return direction.South;
-            else if (aDirection == direction.South)
-                return direction.North;
-            else if (aDirection == direction.East)
-                return direction.West;
-            else
-                return direction.East;
         }
 
         /// <summary>
@@ -1003,26 +798,31 @@ namespace REMS
             return data;
         }
 
-        private void writeToFile(int x, int y, int z, int[] data)
+
+        private void startSimulator()
         {
-            using (swLog = new StreamWriter("log.csv", true))
-            {
-                swLog.Write(x.ToString() + ",");
-                swLog.Write(y.ToString() + ",");
-                swLog.Write(z.ToString() + ",");
+            simulatorTimer = new DispatcherTimer();
+            simulatorTimer.Tick += new EventHandler(moveMotors_Tick);
+            simulatorTimer.Interval = new TimeSpan(0, 0, 1);
+            simulatorTimer.Start();
+        }
 
-                for (int i = 0; i < data.Length; i++)
-                {
-                    swLog.Write(data[i].ToString());
-                    
-                    if (i + 1 < data.Length)
-                        swLog.Write(",");
-                }
-                
-                swLog.Write("\r\n");
-            }
+        private void loadUserPreferences()
+        {
+            // Load user/application settings
+            imageCalibrationPoints[0] = (Point)Properties.Settings.Default["TableBL"];
+            imageCalibrationPoints[1] = (Point)Properties.Settings.Default["TableTR"];
+            nsXStepSize.Value = (int)Properties.Settings.Default["nsXStepSize"];
+            nsYStepSize.Value = (int)Properties.Settings.Default["nsYStepSize"];
+        }
 
-            swLog.Close();
+        private void saveUserPreferences()
+        {
+            Properties.Settings.Default["TableBL"] = imageCalibrationPoints[0];
+            Properties.Settings.Default["TableTR"] = imageCalibrationPoints[1];
+            Properties.Settings.Default["nsXStepSize"] = nsXStepSize.Value;
+            Properties.Settings.Default["nsYStepSize"] = nsYStepSize.Value;
+            Properties.Settings.Default.Save();
         }
     }
 }

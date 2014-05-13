@@ -10,6 +10,5 @@ namespace REMS
     {
         public string threshold { get; set; }
         public string state { get; set; }
-    
     }
 }
