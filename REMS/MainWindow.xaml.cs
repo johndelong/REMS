@@ -14,6 +14,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using NationalInstruments;
 using REMS.classes;
+using REMS.popups;
 using System.Windows.Threading;
 using NationalInstruments.Controls;
 
@@ -49,6 +50,7 @@ namespace REMS
         private Boolean imageLoaded = false;
         public Boolean scanAreaSet = false;
         private Constants.state currentState = Constants.state.Initial;
+        private Constants.state previousState;
         private Constants.direction currentScanDirection = Constants.direction.South;
         
         private ImageSource mLoadedImage;
@@ -161,6 +163,9 @@ namespace REMS
 
         private void transitionToState(Constants.state aState)
         {
+            previousState = currentState;
+            currentState = aState;
+
             switch (aState)
             {
                 case Constants.state.Initial:
@@ -173,11 +178,11 @@ namespace REMS
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
 
+                    btnCalibrate.IsEnabled = true;
+
                     // Update Status
                     lblStatus.Text = Constants.StatusInitial;
 
-                    // Load user preferences
-                    //loadUserPreferences();
                     redrawSelectionObjects();
 
                     // Show captured image
@@ -217,6 +222,8 @@ namespace REMS
                     btnAccept.Content = "Start";
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = true;
+
+                    btnCalibrate.IsEnabled = false;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusReady;
@@ -298,8 +305,7 @@ namespace REMS
         /// <param name="e"></param>
         private void click_calibrate(object sender, RoutedEventArgs e)
         {
-            currentState = Constants.state.Calibration;
-            transitionToState(currentState);
+            transitionToState(Constants.state.Calibration);
         }
 
         /// <summary>
@@ -311,23 +317,19 @@ namespace REMS
         {
             if (currentState == Constants.state.Calibration)
             {
-                currentState = Constants.state.Initial;
-                transitionToState(currentState);
+                transitionToState(Constants.state.Initial);
             }
             else if (currentState == Constants.state.Ready)
             {
-                currentState = Constants.state.Initial;
-                transitionToState(currentState);
+                transitionToState(Constants.state.Initial);
             }
             else if (currentState == Constants.state.Scanning)
             {
-                currentState = Constants.state.Stopped;
-                transitionToState(currentState);
+                transitionToState(Constants.state.Stopped);
             }
             else if (currentState == Constants.state.Stopped)
             {
-                currentState = Constants.state.Initial;
-                transitionToState(currentState);
+                transitionToState(Constants.state.Initial);
             }
         }
 
@@ -340,23 +342,29 @@ namespace REMS
         {
             if (currentState == Constants.state.Initial && scanAreaSet)
             {
-                currentState = Constants.state.Ready;
-                transitionToState(currentState);
+                transitionToState(Constants.state.Ready);
             }
             else if (currentState == Constants.state.Ready)
             {
-                currentState = Constants.state.Scanning;
-                transitionToState(currentState);
+                transitionToState(Constants.state.Scanning);
             }
             else if (currentState == Constants.state.Stopped)
             {
-                currentState = Constants.state.Scanning;
-                transitionToState(currentState);
+                transitionToState(Constants.state.Scanning);
             }
             else if (currentState == Constants.state.Calibration)
             {
-                currentState = Constants.state.Initial;
-                transitionToState(currentState);
+                // Only want to save our calibration values if the user clicks
+                // the 'Accept' button in the calibration state
+                canvasCalibrationPoints = Utilities.determineOpositeCorners(canvasCalibrationPoints[0], canvasCalibrationPoints[1]);
+
+                imageCalibrationPoints[0] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[0], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
+                    imageCaptured.Source.Width, imageCaptured.Source.Height);
+
+                imageCalibrationPoints[1] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[1], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
+                    imageCaptured.Source.Width, imageCaptured.Source.Height);
+
+                transitionToState(Constants.state.Initial);
             }
         }
 
@@ -431,6 +439,31 @@ namespace REMS
             }
         }
 
+        private void click_preferences(object sender, RoutedEventArgs e)
+        {
+            PrefPopup popup = new PrefPopup();
+            popup.ShowDialog();
+        }
+
+        private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2) // for double-click, remove this condition if only want single click
+            {
+                Point cell = mHeatMap.getClickedCell(sender, e);
+                populateGraph((int)cell.X, (int)cell.Y, (int)xScanPoints, (int)yScanPoints);
+                mHeatMapPixelClicked = true;
+            }
+        }
+
+        private void click_heatMapMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (mHeatMapPixelClicked)
+            {
+                AnalyzeTab.IsSelected = true;
+                mHeatMapPixelClicked = false;
+            }
+        }
+
 
 
         /**
@@ -498,15 +531,6 @@ namespace REMS
                     {
                         canvasCalibrationPoints[1] = e.GetPosition(imageCaptured);
 
-                        // Make sure that we always have the bottom left and top right corners
-                        canvasCalibrationPoints = Utilities.determineOpositeCorners(canvasCalibrationPoints[0], canvasCalibrationPoints[1]);
-
-                        imageCalibrationPoints[0] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[0], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
-                            imageCaptured.Source.Width, imageCaptured.Source.Height);
-
-                        imageCalibrationPoints[1] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[1], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
-                            imageCaptured.Source.Width, imageCaptured.Source.Height);
-
                         lblStatus.Text = "Click 'Accept' if rectangle matches table";
                         btnAccept.IsEnabled = true;
                     }
@@ -521,25 +545,31 @@ namespace REMS
         /// <param name="e"></param>
         private void Grid_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            canvasMouseUpPos = e.GetPosition(imageCaptured);
-
-            if (imageLoaded && currentState == Constants.state.Initial)
+            // Only do stuff if the user clicked down in the
+            // canvas area first.
+            if (mouseDown)
             {
-                mouseDown = false;
+                // Get the mouse up location
+                canvasMouseUpPos = e.GetPosition(imageCaptured);
 
-                if (canvasMouseDownPos.X != canvasMouseUpPos.X && canvasMouseDownPos.Y != canvasMouseUpPos.Y)
+                // Get the selection area
+                if (imageLoaded && currentState == Constants.state.Initial)
                 {
-                    scanAreaSet = true;
-                    btnAccept.IsEnabled = true;
-                }
-                else
-                {
-                    scanAreaSet = false;
-                    btnAccept.IsEnabled = false;
-                }
+                    mouseDown = false;
 
+                    if (canvasMouseDownPos.X != canvasMouseUpPos.X && canvasMouseDownPos.Y != canvasMouseUpPos.Y)
+                    {
+                        scanAreaSet = true;
+                        btnAccept.IsEnabled = true;
+                    }
+                    else
+                    {
+                        scanAreaSet = false;
+                        btnAccept.IsEnabled = false;
+                    }
+
+                }
             }
-
         }
 
         /// <summary>
@@ -668,24 +698,7 @@ namespace REMS
             
         }
 
-        private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ClickCount == 2) // for double-click, remove this condition if only want single click
-            {
-                Point cell = mHeatMap.getClickedCell(sender, e);
-                populateGraph((int)cell.X, (int)cell.Y, (int)xScanPoints, (int)yScanPoints);
-                mHeatMapPixelClicked = true;
-            }
-        }
-
-        private void click_heatMapMouseUp(object sender, MouseButtonEventArgs e)
-        {
-            if (mHeatMapPixelClicked)
-            {
-                AnalyzeTab.IsSelected = true;
-                mHeatMapPixelClicked = false;
-            }
-        }
+       
 
 
         /**

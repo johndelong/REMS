@@ -280,6 +280,46 @@ namespace REMS.classes
         }*/
     }
 
+    public static class ExternalData
+    {
+        public static List<Threshold> GetThresholds()
+        {
+            List<Threshold> lThresholds = new List<Threshold>();
+
+            using (StreamReader sr = new StreamReader("Thresholds.csv"))
+            {
+                string line;
+
+                while ((line = sr.ReadLine()) != null)
+                {
+                    Console.WriteLine(line);
+                    string[] lPairs = line.Split(',');
+                    Threshold lThreshold = new Threshold();
+                    lThreshold.data = new List<ThresholdData>();
+                    lThreshold.name = lPairs[0];
+
+                    for (int i = 1; i < lPairs.Length; i++)
+                    {
+                        string[] lTemp = lPairs[i].Split('|');
+                        ThresholdData lData = new ThresholdData();
+                        lData.frequency = lTemp[0];
+                        lData.amplitude = lTemp[1];
+                        lThreshold.data.Add(lData);
+                    }
+
+                    lThresholds.Add(lThreshold);
+                }
+            }
+
+            return lThresholds;
+        }
+
+        public static void SaveThresholds()
+        {
+            //TODO
+        }
+    }
+
     public static class Draw
     {
         /// <summary>
