@@ -295,16 +295,13 @@ namespace REMS.classes
                     Console.WriteLine(line);
                     string[] lPairs = line.Split(',');
                     Threshold lThreshold = new Threshold();
-                    lThreshold.data = new List<ThresholdData>();
+                    //lThreshold.data = new List<ThresholdData>();
                     lThreshold.name = lPairs[0];
 
                     for (int i = 1; i < lPairs.Length; i++)
                     {
                         string[] lTemp = lPairs[i].Split('|');
-                        ThresholdData lData = new ThresholdData();
-                        lData.frequency = lTemp[0];
-                        lData.amplitude = lTemp[1];
-                        lThreshold.data.Add(lData);
+                        lThreshold.data.Add(new ThresholdDetails(lTemp[0], lTemp[1]));
                     }
 
                     lThresholds.Add(lThreshold);

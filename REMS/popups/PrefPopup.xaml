@@ -1,16 +1,84 @@
 ﻿<Window x:Class="REMS.popups.PrefPopup"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ni="http://schemas.ni.com/controls/2009/xaml/presentation"
+        xmlns:p="clr-namespace:REMS.Properties"
         Title="Preferences" Height="500" Width="400"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize" Name="PopupWindow">
+
     <Grid>
         <TabControl Margin="10,10,9.6,37">
+            <TabItem Header="General">
+                <Grid >
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <GroupBox Grid.Row="0" Grid.Column="0" Header="Motor Travel Distance" HorizontalAlignment="Left">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="1" Grid.Column="0" Content="X Motor:" />
+                            <Label Grid.Row="2" Grid.Column="0" Content="Y Motor:" />
+                            <Label Grid.Row="3" Grid.Column="0" Content="Z Motor:" />
+
+                            <TextBox Name="tbXMotorTravelDistance" Grid.Row="1" Grid.Column="1" Width="60" Margin="3" TextChanged="TextBox_TextChanged"
+                                     Text="{Binding ElementName=PopupWindow, Path=motorXTravelDistance, Mode=TwoWay}" />
+
+                            <TextBox Name="tbYMotorTravelDistance" Grid.Row="2" Grid.Column="1" Width="60" Margin="3" TextChanged="TextBox_TextChanged"
+                                    Text="{Binding ElementName=PopupWindow, Path=motorYTravelDistance, Mode=TwoWay}" />
+
+                            <TextBox Name="tbZMotorTravelDistance" Grid.Row="3" Grid.Column="1" Width="60" Margin="3" TextChanged="TextBox_TextChanged"
+                                    Text="{Binding ElementName=PopupWindow, Path=motorZTravelDistance, Mode=TwoWay}" />
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox Grid.Row="0" Grid.Column="1" Header="Heat Map">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0" Content="Opacity %" />
+                            <ni:NumericTextBoxInt32 Name="heatMapOpacity" Grid.Row="0" Grid.Column="1" Width="50" Interval="1"  ValueChanged="nsValueChanged"/>
+                        </Grid>
+                    </GroupBox>
+
+                </Grid>
+            </TabItem>
             <TabItem Header="Thresholds">
-                <Grid Background="#FFE5E5E5">
-                    
-                    <DataGrid Name="gridThresholds" IsReadOnly="true" AutoGenerateColumns="False" Margin="10,40,215.8,36.6">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="5*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="135" />
+                        <ColumnDefinition Width="5*" />
+                    </Grid.ColumnDefinitions>
+
+                    <DataGrid Name="gridThresholds" Grid.Row="0" Grid.Column="0" IsReadOnly="true" AutoGenerateColumns="False" RowHeaderWidth="0">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding name}" Header="Name" Width="SizeToCells" IsReadOnly="true"/>
+                            <DataGridTextColumn Binding="{Binding name}" Header="Name" Width="5*" IsReadOnly="true"/>
                         </DataGrid.Columns>
                         <DataGrid.ItemContainerStyle>
                             <Style TargetType="DataGridRow">
@@ -18,24 +86,25 @@
                             </Style>
                         </DataGrid.ItemContainerStyle>
                     </DataGrid>
-                    <DataGrid Name="gridThresholdData"  AutoGenerateColumns="false" Margin="154,40,9.8,36.6">
+
+                    <DataGrid Name="gridThresholdData" Grid.Row="0" Grid.Column="1" CanUserAddRows="False"
+                              AutoGenerateColumns="false" RowHeaderWidth="0"
+                              ItemsSource="{Binding TestSource}"
+                              >
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding frequency}" Header="Frequency (Hz)" Width="SizeToCells" IsReadOnly="false"/>
-                            <DataGridTextColumn Binding="{Binding amplitude}" Header="Amplitude (dBmv)" Width="SizeToCells" IsReadOnly="false"/>
+                            <DataGridTextColumn Binding="{Binding frequency}" Header="Frequency (Hz)" Width="90" IsReadOnly="false"/>
+                            <DataGridTextColumn Binding="{Binding amplitude}" Header="Amplitude (dBmv)" Width="5*" IsReadOnly="false"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <Button Name="btnEdit"  Content="Edit" Margin="0,0,9.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" Click="click_edit"/>
-                    <Button Name="btnRemove"  Content="Remove"  Margin="0,0,89.8,9.6" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75"/>
-                    <Button Name="btnAdd" Content="Add" Margin="0,0,169.8,9.6" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" Click="click_add"/>
-                    <Label Content="User Defined Thresholds" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
+                    
+                    <Button Name="btnEdit" Grid.Row="1"  Content="Edit" Margin="0,0,9.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" Click="click_edit"/>
+                    
                 </Grid>
             </TabItem>
-            <TabItem Header="TabItem">
-                <Grid Background="#FFE5E5E5"/>
-            </TabItem>
+
         </TabControl>
-        <Button Name="btnApply"  Content="Apply" IsEnabled="false"  Margin="0,0,9.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75"/>
-        <Button Name="btnCancel" Content="Cancel" Margin="0,0,89.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75"/>
-        <Button Name="btnOK" Content="OK" Margin="0,0,169.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75"/>
+        <Button Name="btnApply"  Content="Apply"  Margin="0,0,9.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" IsEnabled="{Binding ElementName=PopupWindow, Path=hasChanged}" Click="btnApply_Click"/>
+        <Button Name="btnCancel" Content="Cancel" Margin="0,0,89.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" Click="btnCancel_Click"/>
+        <Button Name="btnOK" Content="OK" Margin="0,0,169.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" Click="btnOK_Click"/>
     </Grid>
 </Window>

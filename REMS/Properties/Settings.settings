@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="Username" Type="System.String" Scope="User">
-      <Value Profile="(Default)">This is a test</Value>
+      <Value Profile="(Default)">This is a test!</Value>
     </Setting>
     <Setting Name="TableBL" Type="System.Windows.Point" Scope="User">
       <Value Profile="(Default)">0,300</Value>
@@ -16,6 +16,18 @@
     </Setting>
     <Setting Name="nsYStepSize" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="motorXTravelDistance" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">500</Value>
+    </Setting>
+    <Setting Name="motorYTravelDistance" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">762</Value>
+    </Setting>
+    <Setting Name="motorZTravelDistance" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">304.8</Value>
+    </Setting>
+    <Setting Name="heatMapOpacity" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">50</Value>
     </Setting>
   </Settings>
 </SettingsFile>

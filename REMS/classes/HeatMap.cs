@@ -15,6 +15,8 @@ namespace REMS.classes
     {
         private int mRows = 0;
         private int mColumns = 0;
+        private double mPixelOpacity;
+
 
         public HeatMap()
         {
@@ -84,16 +86,30 @@ namespace REMS.classes
             return new Point(col, row); // (x, y)
         }
 
+        public void setPixelOpacity(double Opacity)
+        {
+            if (Opacity >= 0 && Opacity <= 100)
+            {
+                mPixelOpacity = Opacity / 100;
+            }
+
+            foreach (Rectangle lPixel in Children)
+            {
+                lPixel.Fill.Opacity = mPixelOpacity;
+            }
+        }
+
         public void drawPixel(int aCol, int aRow, Color aColor)
         {
             Rectangle pixel = new Rectangle();
 
             SolidColorBrush pixelFill = new SolidColorBrush(aColor);
             pixel.Fill = pixelFill;
-            pixel.Opacity = 0.8;
+            pixel.Opacity = 1;
 
             Grid.SetColumn(pixel, aCol);
             Grid.SetRow(pixel, aRow);
+            pixel.Fill.Opacity = mPixelOpacity;
 
             this.Children.Add(pixel);
         }

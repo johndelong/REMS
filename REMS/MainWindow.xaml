@@ -4,10 +4,9 @@
         xmlns:ni="http://schemas.ni.com/controls/2009/xaml/presentation" 
         xmlns:p="clr-namespace:REMS.Properties"
         Title="MainWindow" Height="600" MinHeight="600" Width="800" MinWidth="800"
-        Closing="onClosing"
+        Closing="onClosing" Name="REMSWindow"
         >
     <Grid>
-
         <DockPanel >
             <Menu DockPanel.Dock="Top">
                 <MenuItem Header="_File">
@@ -22,8 +21,9 @@
                     <MenuItem Header="_Motor Controller"/>
                     <MenuItem Header="_Spectrum Analyzer"/>
                 </MenuItem>
-                <MenuItem Header="_Commands">
+                <MenuItem Header="_Tools">
                     <MenuItem Header="_Capture Image" Click="click_capture_image"/>
+                    <MenuItem Header="_Calibrate" Name="btnCalibrate" Click="click_calibrate"/>
                 </MenuItem>
             </Menu>
 
@@ -75,97 +75,165 @@
             </StatusBar>
             <StackPanel></StackPanel>
         </DockPanel>
+        
+        <Grid Margin="0,25,0,25">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="5*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="95" />
+                <ColumnDefinition Width="105" />
+                <ColumnDefinition Width="5*" />
+            </Grid.ColumnDefinitions>
 
-        <GroupBox Header="Jog Controls" Margin="10,25,0,0" HorizontalAlignment="Left" Width="184" Height="146" VerticalAlignment="Top"  >
-            <Grid>
-                <Button Content="UP" HorizontalAlignment="Left" Margin="111,10,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
-                <Button Content="DOWN" HorizontalAlignment="Left" Margin="111,65,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
-                <Button Content="LEFT" HorizontalAlignment="Left" Margin="1,10,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
-                <Button Content="RIGHT" HorizontalAlignment="Left" Margin="56,10,0,0" VerticalAlignment="Top" Width="50" Height="50"/>
+            <GroupBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,0" Header="Jog Controls">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="5*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="5*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="5*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="5*" />
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Row="0" Grid.Column="1" Width="50" Height="50" >
+                        <Path Fill="Black" Data="M 0 6 L 12 6 L 6 0 Z" Height="32" Stretch="Fill" Width="32"/>
+                    </Button>
+                    <Button Grid.Row="2" Grid.Column="1" Width="50" Height="50" >
+                        <Path Fill="Black" Data="M 0 0 L 6 6 L 12 0 Z" Height="32" Stretch="Fill" Width="32"/>
+                    </Button>
+                    <Button Grid.Row="1" Grid.Column="0" Width="50" Height="50" HorizontalAlignment="Right" >
+                        <Path Fill="Black" Data="M 6 0 L 6 12 L 0 6 Z" Height="32" Stretch="Fill" Width="32"/>
+                    </Button>
+                    <Button Grid.Row="1" Grid.Column="2" Width="50" Height="50" HorizontalAlignment="Left" >
+                        <Path Fill="Black" Data="M 0 0 L 0 12 L 6 6 Z" Height="32" Stretch="Fill" Width="32"/>
+                    </Button>
+                </Grid>
+            </GroupBox>
 
+            <GroupBox Grid.Row="1" Grid.Column="0" Header="Step Size" Margin="3,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="5*"/>
+                    </Grid.ColumnDefinitions>
 
-                <!--<Label Content="Step" Height="25" Margin="0,60,132.2,0" VerticalAlignment="Top"  />-->
+                    <Label Content="X" Grid.Row="0" Grid.Column="0"   />
+                    <ni:NumericTextBoxInt32 Name="nsXStepSize" Grid.Row="0" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
 
+                    <Label Content="Y" Grid.Row="1" Grid.Column="0"   />
+                    <ni:NumericTextBoxInt32 Name="nsYStepSize" Grid.Row="1" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
 
-                <Button Name="btnCalibrate" Content="Calibrate" HorizontalAlignment="Left" Margin="10,93,0,0" VerticalAlignment="Top" Width="80" Height="22" Click="click_calibrate"/>
+                    <Label Content="Z" Grid.Row="2" Grid.Column="0"   />
+                    <ni:NumericTextBoxInt32 Name="nsZStepSize" Grid.Row="2" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
+                </Grid>
+            </GroupBox>
+            
+            <GroupBox Grid.Row="1" Grid.Column="1" Header="Z Scan Area" Margin="0,0,3,0" >
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="5*"/>
+                    </Grid.ColumnDefinitions>
 
-                <!--<TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="67" Margin="39,60,0,0"/>-->
+                    <Label Content="Min" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left" />
+                    <ni:NumericTextBoxInt32 Name="nsZMin" Grid.Row="0" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
+
+                    <Label Content="Max" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Left" />
+                    <ni:NumericTextBoxInt32 Name="nsZMax" Grid.Row="1" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
+                </Grid>
+            </GroupBox>
+            <GroupBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,0" Header="Heat Map Opacity" >
+                <DockPanel VerticalAlignment="Top" >
+                    <TextBlock Text="%" DockPanel.Dock="Right" />
+                    <TextBlock Text="{Binding ElementName=sHeatMapOpacity, Path=Value, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" TextAlignment="Right" Width="25" />
+                    
+                    <Slider Name="sHeatMapOpacity" ValueChanged="heatMapOpacityChanged" Minimum="0" Maximum="100" IsSnapToTickEnabled="True" TickFrequency="5" TickPlacement="BottomRight"/>
+                </DockPanel>
+                
+            </GroupBox>
+            
+
+            
+            <Grid Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="5*" />
+                </Grid.ColumnDefinitions>
+                <Button Name="btnCancel" Grid.Column="0" Content="Cancel" Height="22" Width="80" Click="click_cancel" IsEnabled="False"  />
+                <Button Name="btnAccept" Grid.Column="1" Content="Accept" Height="22" Width="80" Click="click_accept" IsEnabled="False"  />
             </Grid>
-        </GroupBox>
+            
 
-        <GroupBox Header="Z Scan Area" Margin="110,176,0,0" HorizontalAlignment="Left" Width="85" Height="115" VerticalAlignment="Top"  >
-            <Grid>
-                <Label Content="Min" Height="25" VerticalAlignment="Top" Margin="5,10,34.8,0"  />
-                <TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="30" Margin="38,10,0,0" />
+            <TabControl Name="Tabs" Grid.Row="0" Grid.Column="2" Grid.RowSpan="5">
+                <TabItem Header="Results" Name="ResultsTab">
+                    <Grid x:Name="gridResultsTab">
 
-                <Label Content="Max" Height="25" VerticalAlignment="Top" Margin="5,35,34.8,0"  />
-                <TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="30" Margin="38,35,0,0" />
-            </Grid>
-        </GroupBox>
-
-        <GroupBox Header="Step Size" Margin="11,176,0,0" HorizontalAlignment="Left" Width="94" Height="115" VerticalAlignment="Top"  >
-            <Grid>
-                <Label Content="X" Height="25" VerticalAlignment="Top" Margin="0,10,62.8,0"  />
-                <ni:NumericTextBoxInt32 Name="nsXStepSize" HorizontalAlignment="Left" Height="25" VerticalAlignment="Top" Width="58" Margin="23,11,-0.2,0" Interval="1"
-                                         ValueChanged="nsValidator" />
-
-                <Label Content="Y" Height="25" VerticalAlignment="Top" Margin="0,35,62.8,0"  />
-                <ni:NumericTextBoxInt32 Name="nsYStepSize" HorizontalAlignment="Left" Height="25" VerticalAlignment="Top" Width="58" Margin="23,36,-0.2,0" Interval="1"
-                                         ValueChanged="nsValidator" />
-
-                <Label Content="Z" Height="25" VerticalAlignment="Top" Margin="0,61,62.8,0"  />
-                <TextBox HorizontalAlignment="Left" Height="25" TextWrapping="Wrap" Text="000" VerticalAlignment="Top" Width="30" Margin="42,61,0,0"/>
-
-            </Grid>
-        </GroupBox>
-
-        <Button Name="btnCancel" Content="Cancel" Height="22" Width="80" HorizontalAlignment="Left" Margin="10,0,0,28" Click="click_cancel" VerticalAlignment="Bottom" IsEnabled="False"  />
-        <Button Name="btnAccept" Content="Accept" Height="22" Width="80" HorizontalAlignment="Left" Margin="110,0,0,28" Click="click_accept" VerticalAlignment="Bottom" IsEnabled="False"  />
-
-        <TabControl Margin="200,25,10,28" Name="Tabs">
-            <TabItem Header="Results" Name="ResultsTab">
-                <Grid Background="#FFE5E5E5"
-                    x:Name="gridResultsTab"
-                    >
-
-                    <Image Name="imageCaptured" SizeChanged="imageResized" />
-                    <!--<Grid Name="heat_map" ShowGridLines="true" Opacity=".5" MouseDown="click_heatMapPixel"
+                        <Image Name="imageCaptured" SizeChanged="imageResized" />
+                        <!--<Grid Name="heat_map" ShowGridLines="true" Opacity=".5" MouseDown="click_heatMapPixel"
                           Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>-->
 
-                    <classes:HeatMap x:Name="mHeatMap" ShowGridLines="true" Opacity=".5" MouseDown="click_heatMapMouseDown" MouseUp="click_heatMapMouseUp" 
+                        <classes:HeatMap x:Name="mHeatMap" ShowGridLines="true" MouseDown="click_heatMapMouseDown" MouseUp="click_heatMapMouseUp" 
                                      Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
 
-                    <Canvas Name="canvasDrawing" 
+                        <Canvas Name="canvasDrawing" 
                             MouseDown="Grid_MouseDown"
                             MouseUp="Grid_MouseUp"
                             MouseMove="Grid_MouseMove"
                             Background="Transparent"
                             Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
-                </Grid>
-            </TabItem>
+                    </Grid>
+                </TabItem>
 
-            <TabItem Header="Analyze" Name="AnalyzeTab">
-                <Grid Background="#FFE5E5E5">
+                <TabItem Header="Analyze" Name="AnalyzeTab">
+                    <Grid>
 
-                    <DataGrid Name="analyzeGrid" HorizontalAlignment="Left" AutoGenerateColumns="True" Width="150" Margin="10,10,0,10"/>
+                        <DataGrid Name="analyzeGrid" HorizontalAlignment="Left" AutoGenerateColumns="True" Width="150" Margin="10,10,0,10"/>
 
-                    <ni:Graph Name="graph1" Margin="174,5,5,10" >
-                        <ni:Graph.Plots>
-                            <ni:Plot Label="Data" Name="PlotData">
-                                <ni:LinePlotRenderer Stroke="Blue" />
-                        
-                            </ni:Plot>
-                            <ni:Plot  Label="Threshold" Name="PlotThreshold">
-                                <ni:LinePlotRenderer Stroke="Red" />
-                            </ni:Plot>
-                        </ni:Graph.Plots>
-                    </ni:Graph>
-                </Grid>
-            </TabItem>
-        </TabControl>
+                        <ni:Graph Name="graph1" Margin="174,5,5,10" >
+                            <ni:Graph.Plots>
+                                <ni:Plot Label="Data" Name="PlotData">
+                                    <ni:LinePlotRenderer Stroke="Blue" />
+
+                                </ni:Plot>
+                                <ni:Plot  Label="Threshold" Name="PlotThreshold">
+                                    <ni:LinePlotRenderer Stroke="Red" />
+                                </ni:Plot>
+                            </ni:Graph.Plots>
+                        </ni:Graph>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+        </Grid>
+
+        
+
+        
+
+        
+
+        
 
         <!-- DO NOT DELETE FOLLOWING LINE -->
         <!--<TextBox Height="23" TextWrapping="Wrap"  Text="{Binding Source={x:Static p:Settings.Default}, Path=Username, Mode=TwoWay}" Width="120" Margin="34,398,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"/>-->
+
+        <!--<TextBox x:Name="messageText" Height="23" Width="120" Text="{Binding Path=Name2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="34,334,639.6,215"/>-->
 
     </Grid>
 </Window>

@@ -25,7 +25,7 @@ namespace REMS.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("This is a test")]
+        [global::System.Configuration.DefaultSettingValueAttribute("This is a test!")]
         public string Username {
             get {
                 return ((string)(this["Username"]));
@@ -80,6 +80,54 @@ namespace REMS.Properties {
             }
             set {
                 this["nsYStepSize"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("500")]
+        public double motorXTravelDistance {
+            get {
+                return ((double)(this["motorXTravelDistance"]));
+            }
+            set {
+                this["motorXTravelDistance"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("762")]
+        public double motorYTravelDistance {
+            get {
+                return ((double)(this["motorYTravelDistance"]));
+            }
+            set {
+                this["motorYTravelDistance"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("304.8")]
+        public double motorZTravelDistance {
+            get {
+                return ((double)(this["motorZTravelDistance"]));
+            }
+            set {
+                this["motorZTravelDistance"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        public double heatMapOpacity {
+            get {
+                return ((double)(this["heatMapOpacity"]));
+            }
+            set {
+                this["heatMapOpacity"] = value;
             }
         }
     }

@@ -23,9 +23,8 @@ namespace REMS
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window //maybe should try 'implement' REMSProperties
     {
-        
 
         // Calibration Variables
         private Point[] imageCalibrationPoints = new Point[2]; // where actually on the image is the calibration points
@@ -35,8 +34,9 @@ namespace REMS
         private Point[] canvasScanArea = new Point[2];
         private Point[] motorScanAreaPoints = new Point[2]; // the bounds for the motor to travel
 
-        private int motorXTravelDistance = 300;
-        private int motorYTravelDistance = 300;
+        public double motorXTravelDistance;
+        public double motorYTravelDistance;
+        public double motorZTravelDistance;
         //private int motorZTravelDistance = 100;
 
         // Timers
@@ -45,9 +45,11 @@ namespace REMS
         
         private double canvasXStepSize, canvasYStepSize;
 
+        //private double heatMapOpacity;
+        
         private int numOfCalibrationPoints = 0;
 
-        private Boolean imageLoaded = false;
+        //private Boolean imageLoaded = false;
         public Boolean scanAreaSet = false;
         private Constants.state currentState = Constants.state.Initial;
         private Constants.state previousState;
@@ -77,17 +79,11 @@ namespace REMS
         public MainWindow()
         {
             InitializeComponent();
+            
             analyzeGrid.ItemsSource = LoadCollectionData();
 
-            //lblStatus.Text = status.Initial;
-
             loadUserPreferences();
-
-            //swLog = new StreamWriter("log.csv");
-            //swLog = new StreamWriter(fsLog);
-            //swLog.AutoFlush = true;
-            //srLog = new StreamReader(fsLog);
-
+            transitionToState(Constants.state.Initial);
         }
 
         // TODO: Show current x,y,z location on main panel
@@ -180,20 +176,34 @@ namespace REMS
 
                     btnCalibrate.IsEnabled = true;
 
+                    if (previousState == Constants.state.Stopped)
+                    {
+                        // Remmove captured image and heat map
+                        
+                        mLoadedImage = null;
+                        mHeatMap.Clear();
+                    }
+
                     // Update Status
                     lblStatus.Text = Constants.StatusInitial;
 
-                    redrawSelectionObjects();
-
                     // Show captured image
                     imageCaptured.Source = mLoadedImage;
-                    canvasDrawing.Visibility = Visibility.Visible;
 
-                    // Delete everything in the selectorCanvas
-                    canvasDrawing.Children.Clear();
+                    // Redraw the table area on the image after calibration
+                    redrawSelectionObjects();
 
-                    // Draw the motor travel area
-                    drawMotorTravelArea();
+                    // Only show the canvas if we have an image loaded
+                    if (imageCaptured.Source == null)
+                    {
+                        canvasDrawing.Visibility = Visibility.Collapsed;
+                        btnCalibrate.IsEnabled = false;
+                    }
+                    else
+                    {
+                        canvasDrawing.Visibility = Visibility.Visible;
+                        btnCalibrate.IsEnabled = true;
+                    }
                     break;
 
                 case Constants.state.Calibration:
@@ -252,7 +262,8 @@ namespace REMS
                     canvasDrawing.Visibility = Visibility.Collapsed;
 
                     // Initialize the heatmap
-                    mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
+                    if(previousState != Constants.state.Stopped)
+                        mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
                     
                     // Start the simulator
                     startSimulator();
@@ -277,10 +288,7 @@ namespace REMS
                     // Stop the count down timer
                     CDTimer.Stop();
 
-                    // Remmove captured image and heat map
-                    canvasDrawing.Visibility = Visibility.Collapsed;
-                    imageCaptured.Source = null;
-                    mHeatMap.Clear();
+                    
                     
                     break;
             }
@@ -433,8 +441,9 @@ namespace REMS
 
                 mLoadedImage = Imaging.openImageSource(mFileName);
                 imageCaptured.Source = mLoadedImage;
-                imageLoaded = true;
+                //imageLoaded = true;
                 canvasDrawing.Visibility = Visibility.Visible;
+                btnCalibrate.IsEnabled = true;
                 //}
             }
         }
@@ -443,6 +452,7 @@ namespace REMS
         {
             PrefPopup popup = new PrefPopup();
             popup.ShowDialog();
+            loadUserPreferences();
         }
 
         private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
@@ -486,7 +496,7 @@ namespace REMS
             canvasMouseDownPos = e.GetPosition(canvasDrawing);
 
             //Console.WriteLine("X: " + canvasMouseDownPos.X + " Y: " + canvasMouseDownPos.Y);
-            if(imageLoaded)
+            if(imageCaptured.Source != null)
             {
                 if (currentState == Constants.state.Initial)
                 {
@@ -553,7 +563,7 @@ namespace REMS
                 canvasMouseUpPos = e.GetPosition(imageCaptured);
 
                 // Get the selection area
-                if (imageLoaded && currentState == Constants.state.Initial)
+                if (imageCaptured.Source != null && currentState == Constants.state.Initial)
                 {
                     mouseDown = false;
 
@@ -825,6 +835,13 @@ namespace REMS
             // Load user/application settings
             imageCalibrationPoints[0] = (Point)Properties.Settings.Default["TableBL"];
             imageCalibrationPoints[1] = (Point)Properties.Settings.Default["TableTR"];
+
+            motorXTravelDistance = Properties.Settings.Default.motorXTravelDistance;
+            motorYTravelDistance = Properties.Settings.Default.motorYTravelDistance;
+            motorZTravelDistance = Properties.Settings.Default.motorZTravelDistance;
+
+            sHeatMapOpacity.Value = Properties.Settings.Default.heatMapOpacity;
+
             nsXStepSize.Value = (int)Properties.Settings.Default["nsXStepSize"];
             nsYStepSize.Value = (int)Properties.Settings.Default["nsYStepSize"];
         }
@@ -833,9 +850,23 @@ namespace REMS
         {
             Properties.Settings.Default["TableBL"] = imageCalibrationPoints[0];
             Properties.Settings.Default["TableTR"] = imageCalibrationPoints[1];
+
+            Properties.Settings.Default.motorXTravelDistance = motorXTravelDistance;
+            Properties.Settings.Default.motorYTravelDistance = motorYTravelDistance;
+            Properties.Settings.Default.motorZTravelDistance = motorZTravelDistance;
+
             Properties.Settings.Default["nsXStepSize"] = nsXStepSize.Value;
             Properties.Settings.Default["nsYStepSize"] = nsYStepSize.Value;
+
+            Properties.Settings.Default.heatMapOpacity = sHeatMapOpacity.Value;
+            
             Properties.Settings.Default.Save();
+        }
+
+        private void heatMapOpacityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            var slider = sender as Slider;
+            mHeatMap.setPixelOpacity(slider.Value);
         }
     }
 }
