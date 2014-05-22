@@ -76,7 +76,8 @@
                         <ColumnDefinition Width="5*" />
                     </Grid.ColumnDefinitions>
 
-                    <DataGrid Name="gridThresholds" Grid.Row="0" Grid.Column="0" IsReadOnly="true" AutoGenerateColumns="False" RowHeaderWidth="0">
+                    <DataGrid Name="gridThresholds" Grid.Row="0" Grid.Column="0" IsReadOnly="true" AutoGenerateColumns="False" RowHeaderWidth="0"
+                              ItemsSource="{Binding ThresholdData}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding name}" Header="Name" Width="5*" IsReadOnly="true"/>
                         </DataGrid.Columns>
@@ -88,16 +89,26 @@
                     </DataGrid>
 
                     <DataGrid Name="gridThresholdData" Grid.Row="0" Grid.Column="1" CanUserAddRows="False"
-                              AutoGenerateColumns="false" RowHeaderWidth="0"
-                              ItemsSource="{Binding TestSource}"
+                              AutoGenerateColumns="false" RowHeaderWidth="0" IsReadOnly="False"
+                              ItemsSource="{Binding ThresholdDetailsData}"
                               >
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding frequency}" Header="Frequency (Hz)" Width="90" IsReadOnly="false"/>
-                            <DataGridTextColumn Binding="{Binding amplitude}" Header="Amplitude (dBmv)" Width="5*" IsReadOnly="false"/>
+                            <DataGridTextColumn Binding="{Binding frequency}" Header="Frequency (Hz)" Width="90"/>
+                            <DataGridTextColumn Binding="{Binding amplitude}" Header="Amplitude (dBmv)" Width="5*"/>
                         </DataGrid.Columns>
                     </DataGrid>
+                    <Grid Grid.Row="1" Grid.ColumnSpan="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            
+                        </Grid.ColumnDefinitions>
+                        <Button Name="btnRemove" Grid.Column="2"  Content="-" IsEnabled="{Binding ElementName=gridThresholdData, Path=SelectedItems.Count}"  Height="25" Width="25" Click="click_remove"/>
+                        <Button Name="btnAdd" Grid.Column="1"  Content="+"  Height="25" Width="25" Click="click_add"/>
+                    </Grid>
                     
-                    <Button Name="btnEdit" Grid.Row="1"  Content="Edit" Margin="0,0,9.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" Click="click_edit"/>
+                    
                     
                 </Grid>
             </TabItem>

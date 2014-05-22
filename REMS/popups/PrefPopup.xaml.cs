@@ -33,50 +33,53 @@ namespace REMS.popups
         private string _motorXTravelDistance = Convert.ToString(Properties.Settings.Default.motorXTravelDistance);
         private string _motorYTravelDistance = Convert.ToString(Properties.Settings.Default.motorYTravelDistance);
         private string _motorZTravelDistance = Convert.ToString(Properties.Settings.Default.motorZTravelDistance);
-        //private double _heatMapOpacity = Properties.Settings.Default.heatMapOpacity;
         private Boolean _hasChanged;
+        private ObservableCollection<Threshold> _thresholdData;
+        private ObservableCollection<ThresholdDetails> _thresholdDetailsData;
 
         public PrefPopup()
         {
             InitializeComponent();
-            //heatMapOpacity.Value = _heatMapOpacity;
-            TestSource = new ObservableCollection<ThresholdDetails>();
             this.DataContext = this;
 
             hasChanged = false;
-            gridThresholds.ItemsSource = ExternalData.GetThresholds();
+            ThresholdData = new ObservableCollection<Threshold>(ExternalData.GetThresholds());
         }
 
-        private ObservableCollection<ThresholdDetails> _testSource;
-        public ObservableCollection<ThresholdDetails> TestSource
+        public ObservableCollection<Threshold> ThresholdData
         {
-            get
-            {
-                return _testSource;
-            }
+            get { return _thresholdData; }
             set
             {
-                _testSource = value;
-                OnPropertyChanged("TestSource");
+                _thresholdData = value;
+                OnPropertyChanged("ThresholdData");
+            }
+        }
+
+        public ObservableCollection<ThresholdDetails> ThresholdDetailsData
+        {
+            get {return _thresholdDetailsData;}
+            set
+            {
+                _thresholdDetailsData = value;
+                OnPropertyChanged("ThresholdDetailsData");
             }
         }
 
         private void click_add(object sender, RoutedEventArgs e)
         {
-            
+            ThresholdDetails lRow = new ThresholdDetails();
+            ThresholdDetailsData.Add(lRow);
         }
 
-        private void click_edit(object sender, RoutedEventArgs e)
+        private void click_remove(object sender, RoutedEventArgs e)
         {
-            ThresholdDetails lRow = new ThresholdDetails();
-            
-            TestSource.Add(lRow);
-            //gridThresholdData.ItemsSource
+            ThresholdDetailsData.RemoveAt(gridThresholdData.SelectedIndex);
         }
 
         private void btnOK_Click(object sender, RoutedEventArgs e)
         {
-            saveUserPreferences();
+            savePreferences();
             this.Close();
         }
 
@@ -87,19 +90,15 @@ namespace REMS.popups
 
         private void btnApply_Click(object sender, RoutedEventArgs e)
         {
-            saveUserPreferences();
+            savePreferences();
+
             hasChanged = false;
         }
 
+
         private void gridThresholdData_Selected(object sender, RoutedEventArgs e)
         {
-            Threshold lData = (Threshold)gridThresholds.SelectedItem;
-            TestSource.Clear();
-            foreach (ThresholdDetails lRow in lData.data)
-            {
-                TestSource.Add(lRow);
-            }
-            //gridThresholdData.ItemsSource = lData.data;
+            ThresholdDetailsData = ThresholdData.ElementAt<Threshold>(gridThresholds.SelectedIndex).data;
         }
 
         public string motorXTravelDistance
@@ -212,6 +211,12 @@ namespace REMS.popups
             componentChanges[numericStepper.Name] = numericStepper.Value != (int)Properties.Settings.Default[numericStepper.Name];
 
             hasChanged = changesPresent();
+        }
+
+        private void savePreferences()
+        {
+            saveUserPreferences();
+            ExternalData.SaveThresholds(ThresholdData.ToList<Threshold>());
         }
     }
 }

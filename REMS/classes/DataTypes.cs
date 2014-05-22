@@ -13,26 +13,15 @@ namespace REMS
         public string state { get; set; }
     }
 
-    public class ThresholdList : ObservableCollection<Threshold>
-    {
-        public ThresholdList() : base()
-        {
-            Threshold someData = new Threshold();
-            someData.name = "Test";
-            someData.data.Add(new ThresholdDetails("123", "456"));
-            this.Add(someData);
-        }
-    }
-
     public class Threshold
     {
         public Threshold()
         {
-            this.data = new List<ThresholdDetails>();
+            this.data = new ObservableCollection<ThresholdDetails>();
         }
 
         public string name { get; set; }
-        public List<ThresholdDetails> data { get; set; }
+        public ObservableCollection<ThresholdDetails> data { get; set; }
     }
 
     public class ThresholdDetails

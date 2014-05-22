@@ -311,9 +311,22 @@ namespace REMS.classes
             return lThresholds;
         }
 
-        public static void SaveThresholds()
+        public static void SaveThresholds(List<Threshold> aThresholds)
         {
             //TODO
+            using (StreamWriter sw = new StreamWriter("Thresholds.csv"))
+            {
+                foreach (Threshold lThreshold in aThresholds)
+                {
+                    sw.Write(lThreshold.name);
+                    foreach (ThresholdDetails lDetails in lThreshold.data)
+                    {
+                        sw.Write(",");
+                        sw.Write(lDetails.frequency + "|" + lDetails.amplitude);
+                    }
+                    sw.Write("\r\n");
+                }
+            }
         }
     }
 
