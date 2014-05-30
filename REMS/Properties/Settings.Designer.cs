@@ -130,5 +130,41 @@ namespace REMS.Properties {
                 this["heatMapOpacity"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int nsZStepSize {
+            get {
+                return ((int)(this["nsZStepSize"]));
+            }
+            set {
+                this["nsZStepSize"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int nsZMin {
+            get {
+                return ((int)(this["nsZMin"]));
+            }
+            set {
+                this["nsZMin"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int nsZMax {
+            get {
+                return ((int)(this["nsZMax"]));
+            }
+            set {
+                this["nsZMax"] = value;
+            }
+        }
     }
 }

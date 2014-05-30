@@ -16,65 +16,51 @@ using REMS.classes;
 using System.ComponentModel;
 using NationalInstruments.Controls;
 using System.Collections.ObjectModel;
-
-
+using REMS.data;
 
 namespace REMS.popups
 {
     /// <summary>
     /// Interaction logic for preferences.xaml
     /// </summary>
-    public partial class PrefPopup : Window, INotifyPropertyChanged
+    public partial class PrefPopup : Window
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        ObservableCollection<ThresholdViewModel> _thresholds;
 
         Dictionary<String,Boolean> componentChanges = new Dictionary<string,Boolean>();
 
         private string _motorXTravelDistance = Convert.ToString(Properties.Settings.Default.motorXTravelDistance);
         private string _motorYTravelDistance = Convert.ToString(Properties.Settings.Default.motorYTravelDistance);
         private string _motorZTravelDistance = Convert.ToString(Properties.Settings.Default.motorZTravelDistance);
-        private Boolean _hasChanged;
-        private ObservableCollection<Threshold> _thresholdData;
-        private ObservableCollection<ThresholdDetails> _thresholdDetailsData;
 
         public PrefPopup()
         {
             InitializeComponent();
-            this.DataContext = this;
-
-            hasChanged = false;
-            ThresholdData = new ObservableCollection<Threshold>(ExternalData.GetThresholds());
+            _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
+            gridThresholds.ItemsSource = _thresholds;
         }
 
-        public ObservableCollection<Threshold> ThresholdData
+        private void click_addThreshold(object sender, RoutedEventArgs e)
         {
-            get { return _thresholdData; }
-            set
-            {
-                _thresholdData = value;
-                OnPropertyChanged("ThresholdData");
-            }
+            ThresholdViewModel lRow = new ThresholdViewModel();
+            _thresholds.Add(lRow);
         }
 
-        public ObservableCollection<ThresholdDetails> ThresholdDetailsData
+        private void click_removeThreshold(object sender, RoutedEventArgs e)
         {
-            get {return _thresholdDetailsData;}
-            set
-            {
-                _thresholdDetailsData = value;
-                OnPropertyChanged("ThresholdDetailsData");
-            }
+            _thresholds.RemoveAt(gridThresholds.SelectedIndex);
         }
 
-        private void click_add(object sender, RoutedEventArgs e)
+        private void click_addLimit(object sender, RoutedEventArgs e)
         {
-            ThresholdDetails lRow = new ThresholdDetails();
-            ThresholdDetailsData.Add(lRow);
+            ThresholdLimitViewModel lRow = new ThresholdLimitViewModel();
+            _thresholds.ElementAt<ThresholdViewModel>(gridThresholds.SelectedIndex).Limits.Add(lRow);
+            
         }
 
-        private void click_remove(object sender, RoutedEventArgs e)
+        private void click_removeLimit(object sender, RoutedEventArgs e)
         {
-            ThresholdDetailsData.RemoveAt(gridThresholdData.SelectedIndex);
+            _thresholds.ElementAt<ThresholdViewModel>(gridThresholds.SelectedIndex).Limits.RemoveAt(gridThresholdLimits.SelectedIndex);
         }
 
         private void btnOK_Click(object sender, RoutedEventArgs e)
@@ -92,13 +78,7 @@ namespace REMS.popups
         {
             savePreferences();
 
-            hasChanged = false;
-        }
-
-
-        private void gridThresholdData_Selected(object sender, RoutedEventArgs e)
-        {
-            ThresholdDetailsData = ThresholdData.ElementAt<Threshold>(gridThresholds.SelectedIndex).data;
+            //hasChanged = false;
         }
 
         public string motorXTravelDistance
@@ -128,11 +108,11 @@ namespace REMS.popups
             }
         }
 
-        public Boolean hasChanged
+        /*public Boolean hasChanged
         {
             get { return _hasChanged; }
             set { _hasChanged = value; OnPropertyChanged("hasChanged");} 
-        }
+        }*/
 
 
         private Boolean validateNumericInput(string input)
@@ -157,7 +137,6 @@ namespace REMS.popups
             Properties.Settings.Default.motorXTravelDistance = Convert.ToDouble(_motorXTravelDistance);
             Properties.Settings.Default.motorYTravelDistance = Convert.ToDouble(_motorYTravelDistance);
             Properties.Settings.Default.motorZTravelDistance = Convert.ToDouble(_motorZTravelDistance);
-            Properties.Settings.Default.heatMapOpacity = Convert.ToInt32(heatMapOpacity.Value);
         }
 
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -167,7 +146,7 @@ namespace REMS.popups
             string bindingPath = be.ParentBinding.Path.Path;
             componentChanges[bindingPath] = tb.Text != Convert.ToString(Properties.Settings.Default[bindingPath]);
 
-            hasChanged = changesPresent();
+            //hasChanged = changesPresent();
         }
 
         private Boolean changesPresent()
@@ -182,14 +161,6 @@ namespace REMS.popups
                 }
             }
             return lResult;
-        }
-
-        protected void OnPropertyChanged(string propertyName)
-        {
-            if (this.PropertyChanged != null)
-            {
-                this.PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-            }
         }
 
         private void nsPercentageValidator(object sender, ValueChangedEventArgs<int> e)
@@ -210,13 +181,13 @@ namespace REMS.popups
             nsPercentageValidator(sender, e);
             componentChanges[numericStepper.Name] = numericStepper.Value != (int)Properties.Settings.Default[numericStepper.Name];
 
-            hasChanged = changesPresent();
+            //hasChanged = changesPresent();
         }
 
         private void savePreferences()
         {
             saveUserPreferences();
-            ExternalData.SaveThresholds(ThresholdData.ToList<Threshold>());
+            ExternalData.SaveThresholds(_thresholds);
         }
     }
 }

@@ -15,11 +15,16 @@ using System.Windows.Shapes;
 using NationalInstruments;
 using REMS.classes;
 using REMS.popups;
+using REMS.data;
 using System.Windows.Threading;
 using NationalInstruments.Controls;
+using System.Collections.ObjectModel;
 
 namespace REMS
 {
+    //Binding datagrids
+    //http://www.codeproject.com/Articles/165368/WPF-MVVM-Quick-Start-Tutorial
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -53,11 +58,9 @@ namespace REMS
         public Boolean scanAreaSet = false;
         private Constants.state currentState = Constants.state.Initial;
         private Constants.state previousState;
-        private Constants.direction currentScanDirection = Constants.direction.South;
+        private Constants.direction currentScanDirection;
         
         private ImageSource mLoadedImage;
-
-        
 
         bool mouseDown = false; // Set to 'true' when mouse is held down.
         Point canvasMouseDownPos; // The point where the mouse button was clicked down on the image.
@@ -66,59 +69,35 @@ namespace REMS
         
         private double xScanPoints = 0;
         private double yScanPoints = 0;
-        //private double zScanPoints = 0;
-
-        //AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(0);
+        private double zScanPoints = 0;
         
         // File Names
         private string mFileName = "";
-        private string mLogFileName = "log.csv";
+        private string mLogFileName;
         
         private Boolean mHeatMapPixelClicked = false;
+
+        // Connected Devices
+        ClsVxmDriver Vxm = new ClsVxmDriver();
+
+        ObservableCollection<ThresholdViewModel> _thresholds;
 
         public MainWindow()
         {
             InitializeComponent();
-            
-            analyzeGrid.ItemsSource = LoadCollectionData();
+
+            Vxm.LoadDriver("VxmDriver.dll");
 
             loadUserPreferences();
+
+            _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
+            analyzeGrid.ItemsSource = _thresholds;
+
             transitionToState(Constants.state.Initial);
         }
 
-        // TODO: Show current x,y,z location on main panel
-        // TODO: Implement selection area
-        // TODO: Add "Take Picture" button somewhere
-
         // select image to set scan area and zoom in on picture
         //http://www.codeproject.com/Articles/148503/Simple-Drag-Selection-in-WPF
-
-        private List<AnalyzeSynopsisData> LoadCollectionData()
-        {
-
-            List<AnalyzeSynopsisData> authors = new List<AnalyzeSynopsisData>();
-
-            authors.Add(new AnalyzeSynopsisData()
-            {
-                threshold = "Test 1",
-                state = "passed"
-            });
-
-            authors.Add(new AnalyzeSynopsisData()
-            {
-                threshold = "Test 2",
-                state = "failed"
-            });
-
-            authors.Add(new AnalyzeSynopsisData()
-            {
-                threshold = "Test 3",
-                state = "passed"
-            });
-
-
-            return authors;
-        }
 
         private void populateGraph(int x, int y, int rows, int columns)
         {
@@ -157,6 +136,25 @@ namespace REMS
             }
         }
 
+        private void drawThreshold(ThresholdViewModel aThreshold)
+        {
+            Point[] lThresholdLine = new Point[aThreshold.Limits.Count * 2 - 1];
+            int freq = Convert.ToInt32(aThreshold.Limits[0].Frequency);
+            int amp = Convert.ToInt32(aThreshold.Limits[0].Amplitude);
+            int pos = 0;
+            for (int i = 1; i < aThreshold.Limits.Count * 2; i++)
+            {
+                if(i % 2 == 0)
+                    freq = Convert.ToInt32(aThreshold.Limits[i / 2].Frequency);
+                else
+                    amp = Convert.ToInt32(aThreshold.Limits[i / 2].Amplitude);
+
+                lThresholdLine[pos] = new Point(freq, amp);
+                pos++;
+            }
+            graph1.Data[0] = lThresholdLine;
+        }
+
         private void transitionToState(Constants.state aState)
         {
             previousState = currentState;
@@ -175,6 +173,11 @@ namespace REMS
                     btnAccept.IsEnabled = false;
 
                     btnCalibrate.IsEnabled = true;
+
+                    // Enable all GUI Controls
+                    setGUIControlIsEnabled(true);
+
+                    currentScanDirection = Constants.direction.South;
 
                     if (previousState == Constants.state.Stopped)
                     {
@@ -255,6 +258,9 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = false;
 
+                    // Disable all GUI Controls
+                    setGUIControlIsEnabled(false);
+
                     // Update Status
                     lblStatus.Text = Constants.StatusScanning;
 
@@ -265,6 +271,9 @@ namespace REMS
                     if(previousState != Constants.state.Stopped)
                         mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
                     
+                    // Name the log file
+                    mLogFileName = string.Format("Scan_{0:yyyy-MM-dd_hh-mm-ss}.csv", DateTime.Now);
+
                     // Start the simulator
                     startSimulator();
                     break;
@@ -453,6 +462,9 @@ namespace REMS
             PrefPopup popup = new PrefPopup();
             popup.ShowDialog();
             loadUserPreferences();
+            
+            _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
+            analyzeGrid.ItemsSource = _thresholds;
         }
 
         private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
@@ -472,6 +484,58 @@ namespace REMS
                 AnalyzeTab.IsSelected = true;
                 mHeatMapPixelClicked = false;
             }
+        }
+
+        private void click_saveHeatMapImage(object sender, RoutedEventArgs e)
+        {
+            RenderTargetBitmap rtb = new RenderTargetBitmap((int)gridResultsTab.RenderSize.Width,
+                                                            (int)gridResultsTab.RenderSize.Height, 
+                                                            96d, 96d, System.Windows.Media.PixelFormats.Default);
+            rtb.Render(gridResultsTab);
+
+            //var crop = new CroppedBitmap(rtb, new Int32Rect(50, 50, 250, 250));
+
+            BitmapEncoder pngEncoder = new PngBitmapEncoder();
+            pngEncoder.Frames.Add(BitmapFrame.Create(rtb));
+
+            using (var fs = System.IO.File.OpenWrite("logo.png"))
+            {
+                pngEncoder.Save(fs);
+            }
+        }
+
+        private void motorJogUp_Click(object sender, RoutedEventArgs e)
+        {
+            Vxm.DriverTerminalShowState(1, 0);
+            Vxm.PortOpen(1, 9600);
+            Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
+            Vxm.PortClose();
+            Vxm.DriverTerminalShowState(0, 0);
+        }
+
+        private void motorJogDown_Click(object sender, RoutedEventArgs e)
+        {
+            Vxm.DriverTerminalShowState(1, 0);
+            Vxm.PortOpen(1, 9600);
+            Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
+            Vxm.PortWaitForChar("^", 0);
+            Vxm.PortClose();
+            Vxm.DriverTerminalShowState(0, 0);
+        }
+
+        private void motorJogLeft_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void motorJogRight_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void dataGridThreshold_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            drawThreshold(((ThresholdViewModel)analyzeGrid.SelectedItem));
         }
 
 
@@ -680,17 +744,20 @@ namespace REMS
             // Give the motors a starting position
             motorXPos = Convert.ToInt32(motorScanAreaPoints[0].X);
             motorYPos = Convert.ToInt32(motorScanAreaPoints[0].Y);
+            motorZPos = nsZMin.Value;
 
             // Update the scan area width and length
             xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
             yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
+            zScanPoints = (nsZMax.Value - nsZMin.Value) / nsZStepSize.Value;
 
             // Calculate how long it will take
-            int scanPoints = Convert.ToInt32(xScanPoints * yScanPoints);
+            int scanPoints = Convert.ToInt32(xScanPoints * yScanPoints * zScanPoints);
             CDTimer = new CountdownTimer(lblCDTimer, scanPoints);
 
             lblXPosition.Text = motorXPos.ToString();
             lblYPosition.Text = motorYPos.ToString();
+            lblZPosition.Text = motorZPos.ToString();
         }
 
 
@@ -702,7 +769,11 @@ namespace REMS
         private void onClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             //srLog.Close(); // close stream to log file
+            
+            // Release Connected Devices
+            Vxm.ReleaseDriver();
 
+            // Save User Preferences
             saveUserPreferences();
 
             
@@ -740,24 +811,18 @@ namespace REMS
             // Move the motors to the next location
             int nextX = motorXPos;
             int nextY = motorYPos;
+            int nextZ = motorZPos;
 
             Logger.writeToFile(mLogFileName, nextX, nextY, 0, getScannedData(461));
 
             // Update the motor position text
             lblXPosition.Text = nextX.ToString();
             lblYPosition.Text = nextY.ToString();
-
-            Console.WriteLine("Pixel Pos:: X " + (motorXPos - Convert.ToInt32(motorScanAreaPoints[0].X)) +
-                                    " Y " + (motorYPos - Convert.ToInt32(motorScanAreaPoints[0].Y)));
-
-            Console.WriteLine("Motor Pos:: X " + motorXPos +
-                                    " Y " + motorYPos);
-
-            int row = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
-            int col = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
+            lblZPosition.Text = nextZ.ToString();
 
             // draw heat map pixel
-            //drawHeatMapPixel(row, col, Colors.Blue);
+            int row = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
+            int col = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
             mHeatMap.drawPixel(row, col, Colors.Blue);
 
             // Determine the next scan position
@@ -783,10 +848,31 @@ namespace REMS
             }
 
             if (nextX > motorScanAreaPoints[1].X)
-                simulatorTimer.Stop();
+            {
+                if (nextZ + nsZStepSize.Value > nsZMax.Value)
+                {
+                    simulatorTimer.Stop();
+                    string messageBoxText = "Scan Finished!";
+                    string caption = "Information";
+                    MessageBoxButton button = MessageBoxButton.OK;
+                    MessageBoxImage icon = MessageBoxImage.Information;
+                    MessageBox.Show(messageBoxText, caption, button, icon);
+                }
+                else
+                {
+                    nextZ += nsZStepSize.Value;
+                    // Put the motors back to their starting positions
+                    nextX = Convert.ToInt32(motorScanAreaPoints[0].X);
+                    nextY = Convert.ToInt32(motorScanAreaPoints[0].Y);
+                    currentScanDirection = Constants.direction.South;
 
+                    mHeatMap.ClearPixels();
+                }
+            }
+                
             motorXPos = nextX;
             motorYPos = nextY;
+            motorZPos = nextZ;
         }
 
         /// <summary>
@@ -821,6 +907,11 @@ namespace REMS
             return data;
         }
 
+        private Boolean analyzeScannedData(int[] aData, ThresholdViewModel aThreshold)
+        {
+
+            return true;
+        }
 
         private void startSimulator()
         {
@@ -844,6 +935,9 @@ namespace REMS
 
             nsXStepSize.Value = (int)Properties.Settings.Default["nsXStepSize"];
             nsYStepSize.Value = (int)Properties.Settings.Default["nsYStepSize"];
+            nsZStepSize.Value = (int)Properties.Settings.Default.nsZStepSize;
+            nsZMin.Value = (int)Properties.Settings.Default.nsZMin;
+            nsZMax.Value = (int)Properties.Settings.Default.nsZMax;
         }
 
         private void saveUserPreferences()
@@ -857,6 +951,9 @@ namespace REMS
 
             Properties.Settings.Default["nsXStepSize"] = nsXStepSize.Value;
             Properties.Settings.Default["nsYStepSize"] = nsYStepSize.Value;
+            Properties.Settings.Default.nsZStepSize = nsZStepSize.Value;
+            Properties.Settings.Default.nsZMin = nsZMin.Value;
+            Properties.Settings.Default.nsZMax = nsZMax.Value;
 
             Properties.Settings.Default.heatMapOpacity = sHeatMapOpacity.Value;
             
@@ -868,5 +965,20 @@ namespace REMS
             var slider = sender as Slider;
             mHeatMap.setPixelOpacity(slider.Value);
         }
+
+        private void setGUIControlIsEnabled(Boolean aIsEnabled)
+        {
+            btnMotorJogUp.IsEnabled = aIsEnabled;
+            btnMotorJogDown.IsEnabled = aIsEnabled;
+            btnMotorJogLeft.IsEnabled = aIsEnabled;
+            btnMotorJogRight.IsEnabled = aIsEnabled;
+
+            nsXStepSize.IsEnabled = aIsEnabled;
+            nsYStepSize.IsEnabled = aIsEnabled;
+            nsZStepSize.IsEnabled = aIsEnabled;
+            nsZMax.IsEnabled = aIsEnabled;
+            nsZMin.IsEnabled = aIsEnabled;
+        }
+        
     }
 }

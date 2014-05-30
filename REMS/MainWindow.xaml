@@ -75,7 +75,7 @@
             </StatusBar>
             <StackPanel></StackPanel>
         </DockPanel>
-        
+
         <Grid Margin="0,25,0,25">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -102,16 +102,16 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="5*" />
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Row="0" Grid.Column="1" Width="50" Height="50" >
+                    <Button Name="btnMotorJogUp" Grid.Row="0" Grid.Column="1" Width="50" Height="50" Click="motorJogUp_Click" >
                         <Path Fill="Black" Data="M 0 6 L 12 6 L 6 0 Z" Height="32" Stretch="Fill" Width="32"/>
                     </Button>
-                    <Button Grid.Row="2" Grid.Column="1" Width="50" Height="50" >
+                    <Button Name="btnMotorJogDown" Grid.Row="2" Grid.Column="1" Width="50" Height="50" >
                         <Path Fill="Black" Data="M 0 0 L 6 6 L 12 0 Z" Height="32" Stretch="Fill" Width="32"/>
                     </Button>
-                    <Button Grid.Row="1" Grid.Column="0" Width="50" Height="50" HorizontalAlignment="Right" >
+                    <Button Name="btnMotorJogLeft" Grid.Row="1" Grid.Column="0" Width="50" Height="50" HorizontalAlignment="Right" >
                         <Path Fill="Black" Data="M 6 0 L 6 12 L 0 6 Z" Height="32" Stretch="Fill" Width="32"/>
                     </Button>
-                    <Button Grid.Row="1" Grid.Column="2" Width="50" Height="50" HorizontalAlignment="Left" >
+                    <Button Name="btnMotorJogRight" Grid.Row="1" Grid.Column="2" Width="50" Height="50" HorizontalAlignment="Left" >
                         <Path Fill="Black" Data="M 0 0 L 0 12 L 6 6 Z" Height="32" Stretch="Fill" Width="32"/>
                     </Button>
                 </Grid>
@@ -139,7 +139,7 @@
                     <ni:NumericTextBoxInt32 Name="nsZStepSize" Grid.Row="2" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
                 </Grid>
             </GroupBox>
-            
+
             <GroupBox Grid.Row="1" Grid.Column="1" Header="Z Scan Area" Margin="0,0,3,0" >
                 <Grid>
                     <Grid.RowDefinitions>
@@ -162,14 +162,14 @@
                 <DockPanel VerticalAlignment="Top" >
                     <TextBlock Text="%" DockPanel.Dock="Right" />
                     <TextBlock Text="{Binding ElementName=sHeatMapOpacity, Path=Value, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" TextAlignment="Right" Width="25" />
-                    
+
                     <Slider Name="sHeatMapOpacity" ValueChanged="heatMapOpacityChanged" Minimum="0" Maximum="100" IsSnapToTickEnabled="True" TickFrequency="5" TickPlacement="BottomRight"/>
                 </DockPanel>
-                
-            </GroupBox>
-            
 
-            
+            </GroupBox>
+
+
+
             <Grid Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,3">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="5*" />
@@ -178,32 +178,66 @@
                 <Button Name="btnCancel" Grid.Column="0" Content="Cancel" Height="22" Width="80" Click="click_cancel" IsEnabled="False"  />
                 <Button Name="btnAccept" Grid.Column="1" Content="Accept" Height="22" Width="80" Click="click_accept" IsEnabled="False"  />
             </Grid>
-            
+
 
             <TabControl Name="Tabs" Grid.Row="0" Grid.Column="2" Grid.RowSpan="5">
                 <TabItem Header="Results" Name="ResultsTab">
                     <Grid x:Name="gridResultsTab">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="5*" />
+                            <RowDefinition Height="25" />
+                        </Grid.RowDefinitions>
 
-                        <Image Name="imageCaptured" SizeChanged="imageResized" />
-                        <!--<Grid Name="heat_map" ShowGridLines="true" Opacity=".5" MouseDown="click_heatMapPixel"
-                          Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>-->
 
-                        <classes:HeatMap x:Name="mHeatMap" ShowGridLines="true" MouseDown="click_heatMapMouseDown" MouseUp="click_heatMapMouseUp" 
-                                     Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
+                        <Image Name="imageCaptured" Grid.Row="0" SizeChanged="imageResized" />
 
-                        <Canvas Name="canvasDrawing" 
+                        <classes:HeatMap x:Name="mHeatMap" Grid.Row="0" 
+                                         ShowGridLines="true" MouseDown="click_heatMapMouseDown" 
+                                         MouseUp="click_heatMapMouseUp" 
+                                         Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" 
+                                         Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
+
+                        <Canvas Name="canvasDrawing"
+                            Grid.Row="0"
                             MouseDown="Grid_MouseDown"
                             MouseUp="Grid_MouseUp"
                             MouseMove="Grid_MouseMove"
                             Background="Transparent"
                             Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
+
+
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="5*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <ni:NumericTextBoxInt32 Name="nsHeatMapSelector" Grid.Column="0" Width="50" ValueChanged="nsValidator" />
+                            <Button Name="btnSaveHeatMap" Content="Save Image" Grid.Column="2" Height="22" Width="80" Click="click_saveHeatMapImage" />
+                        </Grid>
+
                     </Grid>
                 </TabItem>
 
                 <TabItem Header="Analyze" Name="AnalyzeTab">
                     <Grid>
 
-                        <DataGrid Name="analyzeGrid" HorizontalAlignment="Left" AutoGenerateColumns="True" Width="150" Margin="10,10,0,10"/>
+                        <DataGrid Name="analyzeGrid" Width="150" Margin="10,10,0,10"
+                                  HorizontalAlignment="Left" AutoGenerateColumns="false"
+                                  IsReadOnly="True" RowHeaderWidth="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Name}" Header="Name" Width="5*"/>
+                                <DataGridTextColumn Binding="{Binding State}" Header="State" Width="5*"/>
+                            </DataGrid.Columns>
+
+                            <DataGrid.ItemContainerStyle>
+                                <Style TargetType="DataGridRow">
+                                    <EventSetter Event="MouseUp" Handler="dataGridThreshold_MouseUp"/>
+                                </Style>
+                            </DataGrid.ItemContainerStyle>
+                        </DataGrid>
 
                         <ni:Graph Name="graph1" Margin="174,5,5,10" >
                             <ni:Graph.Plots>
@@ -222,13 +256,13 @@
 
         </Grid>
 
-        
 
-        
 
-        
 
-        
+
+
+
+
 
         <!-- DO NOT DELETE FOLLOWING LINE -->
         <!--<TextBox Height="23" TextWrapping="Wrap"  Text="{Binding Source={x:Static p:Settings.Default}, Path=Username, Mode=TwoWay}" Width="120" Margin="34,398,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"/>-->

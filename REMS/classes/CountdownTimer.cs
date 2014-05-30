@@ -12,6 +12,7 @@ namespace REMS.classes
     {
         private int _scanPoints = 0;
         private TextBlock _label;
+        private int _averageScanTime;
 
         DispatcherTimer _timer = new DispatcherTimer();
         TimeSpan _time;

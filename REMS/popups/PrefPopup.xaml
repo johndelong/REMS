@@ -47,22 +47,6 @@
                                     Text="{Binding ElementName=PopupWindow, Path=motorZTravelDistance, Mode=TwoWay}" />
                         </Grid>
                     </GroupBox>
-                    <GroupBox Grid.Row="0" Grid.Column="1" Header="Heat Map">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <Label Grid.Row="0" Grid.Column="0" Content="Opacity %" />
-                            <ni:NumericTextBoxInt32 Name="heatMapOpacity" Grid.Row="0" Grid.Column="1" Width="50" Interval="1"  ValueChanged="nsValueChanged"/>
-                        </Grid>
-                    </GroupBox>
-
                 </Grid>
             </TabItem>
             <TabItem Header="Thresholds">
@@ -76,40 +60,53 @@
                         <ColumnDefinition Width="5*" />
                     </Grid.ColumnDefinitions>
 
-                    <DataGrid Name="gridThresholds" Grid.Row="0" Grid.Column="0" IsReadOnly="true" AutoGenerateColumns="False" RowHeaderWidth="0"
-                              ItemsSource="{Binding ThresholdData}">
+                    <DataGrid Name="gridThresholds" Grid.Row="0" Grid.Column="0" CanUserAddRows="False" IsReadOnly="False" 
+                              AutoGenerateColumns="False" RowHeaderWidth="0">
+                        
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding name}" Header="Name" Width="5*" IsReadOnly="true"/>
+                            <DataGridTextColumn Binding="{Binding Name}" Header="Name" Width="5*" />
                         </DataGrid.Columns>
-                        <DataGrid.ItemContainerStyle>
+                        
+                        <!--<DataGrid.ItemContainerStyle>
                             <Style TargetType="DataGridRow">
                                 <EventSetter Event="MouseUp" Handler="gridThresholdData_Selected"/>
                             </Style>
-                        </DataGrid.ItemContainerStyle>
+                        </DataGrid.ItemContainerStyle>-->
+                        
                     </DataGrid>
 
-                    <DataGrid Name="gridThresholdData" Grid.Row="0" Grid.Column="1" CanUserAddRows="False"
+                    <DataGrid Name="gridThresholdLimits" Grid.Row="0" Grid.Column="1" CanUserAddRows="False"
                               AutoGenerateColumns="false" RowHeaderWidth="0" IsReadOnly="False"
-                              ItemsSource="{Binding ThresholdDetailsData}"
-                              >
+                              ItemsSource="{Binding ElementName=gridThresholds, Path=SelectedItem.Limits}">
+                        
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding frequency}" Header="Frequency (Hz)" Width="90"/>
-                            <DataGridTextColumn Binding="{Binding amplitude}" Header="Amplitude (dBmv)" Width="5*"/>
+                            <DataGridTextColumn Binding="{Binding Frequency}" Header="Frequency (Hz)" Width="90"/>
+                            <DataGridTextColumn Binding="{Binding Amplitude}" Header="Amplitude (dBmv)" Width="5*"/>
                         </DataGrid.Columns>
+                        
                     </DataGrid>
-                    <Grid Grid.Row="1" Grid.ColumnSpan="2">
+                    
+                    <Grid Grid.Row="1" Grid.Column="0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="5*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
-                            
+
                         </Grid.ColumnDefinitions>
-                        <Button Name="btnRemove" Grid.Column="2"  Content="-" IsEnabled="{Binding ElementName=gridThresholdData, Path=SelectedItems.Count}"  Height="25" Width="25" Click="click_remove"/>
-                        <Button Name="btnAdd" Grid.Column="1"  Content="+"  Height="25" Width="25" Click="click_add"/>
+                        <Button Name="btnRemoveThreshold" Grid.Column="2"  Content="-"  Height="25" Width="25" Click="click_removeThreshold"/>
+                        <Button Name="btnAddThreshold" Grid.Column="1"  Content="+"  Height="25" Width="25" Click="click_addThreshold"/>
                     </Grid>
-                    
-                    
-                    
+
+                    <Grid Grid.Row="1" Grid.Column="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+
+                        </Grid.ColumnDefinitions>
+                        <Button Name="btnRemoveLimit" Grid.Column="2"  Content="-"  Height="25" Width="25" Click="click_removeLimit"/>
+                        <Button Name="btnAddLimit" Grid.Column="1"  Content="+"  Height="25" Width="25" Click="click_addLimit"/>
+                    </Grid>
                 </Grid>
             </TabItem>
 

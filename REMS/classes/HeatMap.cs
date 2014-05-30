@@ -53,6 +53,11 @@ namespace REMS.classes
             this.ColumnDefinitions.Clear();
         }
 
+        public void ClearPixels()
+        {
+            this.Children.Clear();
+        }
+
         public Point getClickedCell(object sender, MouseButtonEventArgs e)
         {
             var point = Mouse.GetPosition(this);

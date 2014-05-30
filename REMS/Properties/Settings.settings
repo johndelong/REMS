@@ -29,5 +29,14 @@
     <Setting Name="heatMapOpacity" Type="System.Double" Scope="User">
       <Value Profile="(Default)">50</Value>
     </Setting>
+    <Setting Name="nsZStepSize" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="nsZMin" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="nsZMax" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

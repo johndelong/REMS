@@ -103,10 +103,16 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="classes\Person.cs" />
-    <Compile Include="classes\DataTypes.cs" />
     <Compile Include="classes\CountdownTimer.cs" />
     <Compile Include="classes\HeatMap.cs" />
     <Compile Include="classes\Utilities.cs" />
+    <Compile Include="data\Analytic.cs" />
+    <Compile Include="data\Threshold.cs" />
+    <Compile Include="data\ThresholdLimit.cs" />
+    <Compile Include="data\ThresholdLimitViewModel.cs" />
+    <Compile Include="data\ThresholdViewModel.cs" />
+    <Compile Include="drivers\ClsVxmDriver.cs" />
+    <Compile Include="lib\ObservableObject.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -143,14 +149,11 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <AppDesigner Include="Properties\" />
-    <None Include="REMS_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="drivers\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.5">
       <Visible>False</Visible>

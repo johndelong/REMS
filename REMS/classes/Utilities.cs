@@ -9,7 +9,8 @@ using System.Windows.Shapes;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Controls;
-
+using System.Collections.ObjectModel;
+using REMS.data;
 
 namespace REMS.classes
 {
@@ -282,10 +283,10 @@ namespace REMS.classes
 
     public static class ExternalData
     {
-        public static List<Threshold> GetThresholds()
+        public static ObservableCollection<ThresholdViewModel> GetThresholds()
         {
-            List<Threshold> lThresholds = new List<Threshold>();
-
+            ObservableCollection<ThresholdViewModel> lThresholds = new ObservableCollection<ThresholdViewModel>();
+           
             using (StreamReader sr = new StreamReader("Thresholds.csv"))
             {
                 string line;
@@ -294,14 +295,13 @@ namespace REMS.classes
                 {
                     Console.WriteLine(line);
                     string[] lPairs = line.Split(',');
-                    Threshold lThreshold = new Threshold();
-                    //lThreshold.data = new List<ThresholdData>();
-                    lThreshold.name = lPairs[0];
+                    ThresholdViewModel lThreshold = new ThresholdViewModel();
+                    lThreshold.Name = lPairs[0];
 
                     for (int i = 1; i < lPairs.Length; i++)
                     {
                         string[] lTemp = lPairs[i].Split('|');
-                        lThreshold.data.Add(new ThresholdDetails(lTemp[0], lTemp[1]));
+                        lThreshold.Limits.Add(new ThresholdLimitViewModel(lTemp[0], lTemp[1]));
                     }
 
                     lThresholds.Add(lThreshold);
@@ -311,18 +311,17 @@ namespace REMS.classes
             return lThresholds;
         }
 
-        public static void SaveThresholds(List<Threshold> aThresholds)
+        public static void SaveThresholds(ObservableCollection<ThresholdViewModel> aThresholds)
         {
-            //TODO
             using (StreamWriter sw = new StreamWriter("Thresholds.csv"))
             {
-                foreach (Threshold lThreshold in aThresholds)
+                foreach (ThresholdViewModel lThreshold in aThresholds)
                 {
-                    sw.Write(lThreshold.name);
-                    foreach (ThresholdDetails lDetails in lThreshold.data)
+                    sw.Write(lThreshold.Name);
+                    foreach (ThresholdLimitViewModel lLimits in lThreshold.Limits)
                     {
                         sw.Write(",");
-                        sw.Write(lDetails.frequency + "|" + lDetails.amplitude);
+                        sw.Write(lLimits.Frequency + "|" + lLimits.Amplitude);
                     }
                     sw.Write("\r\n");
                 }
