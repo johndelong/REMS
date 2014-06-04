@@ -31,7 +31,7 @@ namespace REMS.classes
             Calibration,
             Stopped,
             Scanning,
-            Done
+            Overview
         }
 
         public enum direction : int
@@ -56,6 +56,14 @@ namespace REMS.classes
             else
                 return Constants.direction.East;
         }
+
+        public static void Sort<T>(this ObservableCollection<T> collection) where T : IComparable
+        {
+            List<T> sorted = collection.OrderBy(x => x).ToList();
+            for (int i = 0; i < sorted.Count(); i++)
+                collection.Move(collection.IndexOf(sorted[i]), i);
+        }
+
 
         /// <summary>
         /// Given to points, this function returns the top left and bottom right corner

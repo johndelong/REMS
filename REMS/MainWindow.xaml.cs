@@ -67,9 +67,13 @@ namespace REMS
         Point canvasMouseUpPos;
         int motorXPos, motorYPos, motorZPos;
         
-        private double xScanPoints = 0;
-        private double yScanPoints = 0;
-        private double zScanPoints = 0;
+        private int xScanPoints = 0;
+        private int yScanPoints = 0;
+        //private int[] zScanPoints;
+        //private int numXYPlanes = 0;
+        private int totalScanPoints = 0;
+
+        private int currentZScanIndex = 0;
         
         // File Names
         private string mFileName = "";
@@ -81,6 +85,7 @@ namespace REMS
         ClsVxmDriver Vxm = new ClsVxmDriver();
 
         ObservableCollection<ThresholdViewModel> _thresholds;
+        ObservableCollection<ScanLevel> _scans;
 
         public MainWindow()
         {
@@ -91,6 +96,8 @@ namespace REMS
             loadUserPreferences();
 
             _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
+            _scans = new ObservableCollection<ScanLevel>();
+
             analyzeGrid.ItemsSource = _thresholds;
 
             transitionToState(Constants.state.Initial);
@@ -107,28 +114,14 @@ namespace REMS
             string line = Logger.getLineFromFile(mLogFileName, lineNum);
             if (line != null)
             {
-                //AnalogWaveform<double> analogWaveform = new AnalogWaveform<double>(numberOfPoints);
-
                 int[] data = new int[numberOfPoints];
                 var temp = line.Split(',');
                 for (int i = 3; i < temp.Length; i++)
                 {
                     data[i - 3] = Convert.ToInt32(temp[i]);
                 }
-
-
-                Point[] myData = new Point[8];
-                myData[0] = new Point(0, 100);
-                myData[1] = new Point(82, 100);
-                myData[2] = new Point(82, 150);
-                myData[3] = new Point(216, 150);
-                myData[4] = new Point(216, 200);
-                myData[5] = new Point(960, 200);
-                myData[6] = new Point(960, 500);
-                myData[7] = new Point(1000, 500);
                 
-                graph1.Data[0] = data;
-                graph1.Data[1] = myData;
+                graph1.Data[1] = data;
             }
             else
             {
@@ -182,10 +175,10 @@ namespace REMS
                     if (previousState == Constants.state.Stopped)
                     {
                         // Remmove captured image and heat map
-                        
                         mLoadedImage = null;
-                        mHeatMap.Clear();
                     }
+
+                    mHeatMap.Clear();
 
                     // Update Status
                     lblStatus.Text = Constants.StatusInitial;
@@ -266,10 +259,6 @@ namespace REMS
 
                     // Hide drawing canvas
                     canvasDrawing.Visibility = Visibility.Collapsed;
-
-                    // Initialize the heatmap
-                    if(previousState != Constants.state.Stopped)
-                        mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
                     
                     // Name the log file
                     mLogFileName = string.Format("Scan_{0:yyyy-MM-dd_hh-mm-ss}.csv", DateTime.Now);
@@ -297,8 +286,19 @@ namespace REMS
                     // Stop the count down timer
                     CDTimer.Stop();
 
+               
                     
-                    
+                    break;
+
+                case Constants.state.Overview:
+                    // Update Buttons
+                    btnCancel.Content = "Reset";
+                    btnCancel.Background = null;
+                    btnCancel.IsEnabled = true;
+
+                    btnAccept.Content = "Start";
+                    btnAccept.Background = null;
+                    btnAccept.IsEnabled = false;
                     break;
             }
         }
@@ -538,7 +538,10 @@ namespace REMS
             drawThreshold(((ThresholdViewModel)analyzeGrid.SelectedItem));
         }
 
+        private void dataGridScanLevel_MouseUp(object sender, MouseButtonEventArgs e)
+        {
 
+        }
 
         /**
          * 
@@ -747,13 +750,30 @@ namespace REMS
             motorZPos = nsZMin.Value;
 
             // Update the scan area width and length
-            xScanPoints = (motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
-            yScanPoints = (motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
-            zScanPoints = (nsZMax.Value - nsZMin.Value) / nsZStepSize.Value;
+            xScanPoints = (int)(motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
+            yScanPoints = (int)(motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
 
             // Calculate how long it will take
-            int scanPoints = Convert.ToInt32(xScanPoints * yScanPoints * zScanPoints);
-            CDTimer = new CountdownTimer(lblCDTimer, scanPoints);
+            int numXYPlanes = (int)Math.Ceiling((double)(nsZMax.Value - nsZMin.Value) / (double)nsZStepSize.Value) + 1;
+            //zScanPoints = new int[numXYPlanes];
+
+            _scans.Clear();
+            for (int i = 0; i < numXYPlanes; i++)
+            {
+                int temp = (int)(nsZMin.Value + (nsZStepSize.Value * i));
+                if(temp > (int)nsZMax.Value) temp = (int)nsZMax.Value;
+                ScanLevel lScan = new ScanLevel(temp);
+                _scans.Add(lScan);
+                //zScanPoints[i] = temp;
+            }
+            dgZScanPoints.ItemsSource = _scans;
+
+            totalScanPoints = Convert.ToInt32(xScanPoints * yScanPoints * numXYPlanes);
+
+            CDTimer = new CountdownTimer(lblCDTimer, totalScanPoints);
+
+            // Initialize the heatmap
+            mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
 
             lblXPosition.Text = motorXPos.ToString();
             lblYPosition.Text = motorYPos.ToString();
@@ -803,6 +823,8 @@ namespace REMS
 
         private void moveMotors_Tick(object sender, EventArgs e)
         {
+            _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "In Progress";
+
             // Start the count down timer if it is
             // not already started
             if(!CDTimer.Enabled)
@@ -852,6 +874,8 @@ namespace REMS
                 if (nextZ + nsZStepSize.Value > nsZMax.Value)
                 {
                     simulatorTimer.Stop();
+                    transitionToState(Constants.state.Overview);
+
                     string messageBoxText = "Scan Finished!";
                     string caption = "Information";
                     MessageBoxButton button = MessageBoxButton.OK;
@@ -861,10 +885,17 @@ namespace REMS
                 else
                 {
                     nextZ += nsZStepSize.Value;
+
+                    _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "Complete";
+                    
+                    currentZScanIndex++;
+
                     // Put the motors back to their starting positions
                     nextX = Convert.ToInt32(motorScanAreaPoints[0].X);
                     nextY = Convert.ToInt32(motorScanAreaPoints[0].Y);
                     currentScanDirection = Constants.direction.South;
+                    
+
 
                     mHeatMap.ClearPixels();
                 }

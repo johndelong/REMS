@@ -6,6 +6,7 @@
         Title="MainWindow" Height="600" MinHeight="600" Width="800" MinWidth="800"
         Closing="onClosing" Name="REMSWindow"
         >
+    
     <Grid>
         <DockPanel >
             <Menu DockPanel.Dock="Top">
@@ -13,6 +14,7 @@
                     <MenuItem Header="_Open" Click="click_open"/>
                     <MenuItem Header="_Close"/>
                     <MenuItem Header="_Save"/>
+                    <MenuItem Header="_Save HeatMap" Click="click_saveHeatMapImage" />
                     <MenuItem Header="_Preferences" Click="click_preferences"/>
                     <MenuItem Header="_Exit"/>
                 </MenuItem>
@@ -179,45 +181,44 @@
                 <Button Name="btnAccept" Grid.Column="1" Content="Accept" Height="22" Width="80" Click="click_accept" IsEnabled="False"  />
             </Grid>
 
-
             <TabControl Name="Tabs" Grid.Row="0" Grid.Column="2" Grid.RowSpan="5">
                 <TabItem Header="Results" Name="ResultsTab">
                     <Grid x:Name="gridResultsTab">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="5*" />
-                            <RowDefinition Height="25" />
-                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="5*" />
+                        </Grid.ColumnDefinitions>
 
+                        <DataGrid Name="dgZScanPoints" 
+                                  AutoGenerateColumns="false"
+                                  IsReadOnly="True" RowHeaderWidth="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding ZPos}" Header="Z Pos" Width="5*"/>
+                                <DataGridTextColumn Binding="{Binding State}" Header="State" Width="5*"/>
+                            </DataGrid.Columns>
 
-                        <Image Name="imageCaptured" Grid.Row="0" SizeChanged="imageResized" />
+                            <DataGrid.ItemContainerStyle>
+                                <Style TargetType="DataGridRow">
+                                    <EventSetter Event="MouseUp" Handler="dataGridScanLevel_MouseUp"/>
+                                </Style>
+                            </DataGrid.ItemContainerStyle>
+                        </DataGrid>
 
-                        <classes:HeatMap x:Name="mHeatMap" Grid.Row="0" 
+                        <Image Name="imageCaptured" Grid.Column="1" SizeChanged="imageResized" />
+
+                        <classes:HeatMap x:Name="mHeatMap" Grid.Column="1" 
                                          ShowGridLines="true" MouseDown="click_heatMapMouseDown" 
                                          MouseUp="click_heatMapMouseUp" 
                                          Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" 
                                          Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
 
                         <Canvas Name="canvasDrawing"
-                            Grid.Row="0"
+                            Grid.Column="1"
                             MouseDown="Grid_MouseDown"
                             MouseUp="Grid_MouseUp"
                             MouseMove="Grid_MouseMove"
                             Background="Transparent"
                             Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
-
-
-
-                        <Grid Grid.Row="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="5*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <ni:NumericTextBoxInt32 Name="nsHeatMapSelector" Grid.Column="0" Width="50" ValueChanged="nsValidator" />
-                            <Button Name="btnSaveHeatMap" Content="Save Image" Grid.Column="2" Height="22" Width="80" Click="click_saveHeatMapImage" />
-                        </Grid>
-
                     </Grid>
                 </TabItem>
 

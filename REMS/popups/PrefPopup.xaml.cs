@@ -27,7 +27,7 @@ namespace REMS.popups
     {
         ObservableCollection<ThresholdViewModel> _thresholds;
 
-        Dictionary<String,Boolean> componentChanges = new Dictionary<string,Boolean>();
+        Dictionary<String, Boolean> componentChanges = new Dictionary<string, Boolean>();
 
         private string _motorXTravelDistance = Convert.ToString(Properties.Settings.Default.motorXTravelDistance);
         private string _motorYTravelDistance = Convert.ToString(Properties.Settings.Default.motorYTravelDistance);
@@ -55,7 +55,7 @@ namespace REMS.popups
         {
             ThresholdLimitViewModel lRow = new ThresholdLimitViewModel();
             _thresholds.ElementAt<ThresholdViewModel>(gridThresholds.SelectedIndex).Limits.Add(lRow);
-            
+
         }
 
         private void click_removeLimit(object sender, RoutedEventArgs e)
@@ -77,8 +77,6 @@ namespace REMS.popups
         private void btnApply_Click(object sender, RoutedEventArgs e)
         {
             savePreferences();
-
-            //hasChanged = false;
         }
 
         public string motorXTravelDistance
@@ -108,13 +106,6 @@ namespace REMS.popups
             }
         }
 
-        /*public Boolean hasChanged
-        {
-            get { return _hasChanged; }
-            set { _hasChanged = value; OnPropertyChanged("hasChanged");} 
-        }*/
-
-
         private Boolean validateNumericInput(string input)
         {
             Boolean lResult = false;
@@ -129,7 +120,7 @@ namespace REMS.popups
                 lResult = false;
             }
 
-            return lResult; 
+            return lResult;
         }
 
         private void saveUserPreferences()
@@ -139,30 +130,6 @@ namespace REMS.popups
             Properties.Settings.Default.motorZTravelDistance = Convert.ToDouble(_motorZTravelDistance);
         }
 
-        private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            TextBox tb = sender as TextBox;
-            BindingExpression be = tb.GetBindingExpression(TextBox.TextProperty);
-            string bindingPath = be.ParentBinding.Path.Path;
-            componentChanges[bindingPath] = tb.Text != Convert.ToString(Properties.Settings.Default[bindingPath]);
-
-            //hasChanged = changesPresent();
-        }
-
-        private Boolean changesPresent()
-        {
-            Boolean lResult = false;
-            foreach (Boolean lVal in componentChanges.Values)
-            {
-                if (lVal)
-                {
-                    lResult = true;
-                    break;
-                }
-            }
-            return lResult;
-        }
-
         private void nsPercentageValidator(object sender, ValueChangedEventArgs<int> e)
         {
             NumericTextBoxInt32 numericStepper = sender as NumericTextBoxInt32;
@@ -170,7 +137,7 @@ namespace REMS.popups
             // Step size cannot be less than 1
             if (e.NewValue < 1)
                 numericStepper.Value = 1;
-            
+
             if (e.NewValue > 100)
                 numericStepper.Value = 100;
         }
@@ -180,14 +147,32 @@ namespace REMS.popups
             NumericTextBoxInt32 numericStepper = sender as NumericTextBoxInt32;
             nsPercentageValidator(sender, e);
             componentChanges[numericStepper.Name] = numericStepper.Value != (int)Properties.Settings.Default[numericStepper.Name];
-
-            //hasChanged = changesPresent();
         }
 
         private void savePreferences()
         {
             saveUserPreferences();
+
             ExternalData.SaveThresholds(_thresholds);
+        }
+
+        private void gridThresholdLimits_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            if (this.gridThresholdLimits.SelectedItem != null)
+            {
+                (sender as DataGrid).RowEditEnding -= gridThresholdLimits_RowEditEnding;
+                (sender as DataGrid).CommitEdit();
+                (sender as DataGrid).Items.Refresh();
+                (sender as DataGrid).RowEditEnding += gridThresholdLimits_RowEditEnding;
+            }
+            else return;
+
+            //Sort threshold data
+            foreach (ThresholdViewModel lThreshold in _thresholds)
+            {
+                Utilities.Sort<ThresholdLimitViewModel>(lThreshold.Limits);
+            }
+
         }
     }
 }

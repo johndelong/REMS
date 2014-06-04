@@ -107,8 +107,7 @@
     <Compile Include="classes\HeatMap.cs" />
     <Compile Include="classes\Utilities.cs" />
     <Compile Include="data\Analytic.cs" />
-    <Compile Include="data\Threshold.cs" />
-    <Compile Include="data\ThresholdLimit.cs" />
+    <Compile Include="data\ScanLevel.cs" />
     <Compile Include="data\ThresholdLimitViewModel.cs" />
     <Compile Include="data\ThresholdViewModel.cs" />
     <Compile Include="drivers\ClsVxmDriver.cs" />
