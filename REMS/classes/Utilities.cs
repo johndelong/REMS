@@ -226,15 +226,17 @@ namespace REMS.classes
         /// <param name="aFileName"></param>
         /// <param name="aLine"></param>
         /// <returns></returns>
-        public static string getLineFromFile(string aFileName, int aLine)
+        public static string[] getLineFromFile(string aFileName, String aRow, String aCol, String aZPos)
         {
-            string lResult;
+            string[] lResult = null; 
             using (StreamReader srLog = new StreamReader(aFileName))
             {
-                for (int i = 1; i < aLine; i++)
-                    srLog.ReadLine();
-
-                lResult = srLog.ReadLine();
+                while (srLog.Peek() >= 0)
+                {
+                    lResult = srLog.ReadLine().Split(',');
+                    if (lResult[0] == aRow && lResult[1] == aCol && lResult[2] == aZPos)
+                        break;
+                }
             }
             return lResult;
         }

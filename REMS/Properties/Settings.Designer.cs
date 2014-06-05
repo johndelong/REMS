@@ -166,5 +166,29 @@ namespace REMS.Properties {
                 this["nsZMax"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("6")]
+        public int SAMinFrequency {
+            get {
+                return ((int)(this["SAMinFrequency"]));
+            }
+            set {
+                this["SAMinFrequency"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int SAMaxFrequency {
+            get {
+                return ((int)(this["SAMaxFrequency"]));
+            }
+            set {
+                this["SAMaxFrequency"] = value;
+            }
+        }
     }
 }

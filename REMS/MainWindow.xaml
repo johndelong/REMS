@@ -191,7 +191,7 @@
 
                         <DataGrid Name="dgZScanPoints" 
                                   AutoGenerateColumns="false"
-                                  IsReadOnly="True" RowHeaderWidth="0">
+                                  IsReadOnly="True" RowHeaderWidth="0" SelectedCellsChanged="dgZScanPoints_SelectedCellsChanged">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Binding="{Binding ZPos}" Header="Z Pos" Width="5*"/>
                                 <DataGridTextColumn Binding="{Binding State}" Header="State" Width="5*"/>

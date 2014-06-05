@@ -31,14 +31,14 @@ namespace REMS.classes
             RowDefinition rowDef;
             ColumnDefinition colDef;
 
-            for (int lRow = 0; lRow <= mRows; lRow++)
+            for (int lRow = 0; lRow < mRows; lRow++)
             {
                 rowDef = new RowDefinition();
                 this.RowDefinitions.Insert(this.RowDefinitions.Count, rowDef);
                 //Console.WriteLine(heat_map.RowDefinitions.IndexOf(rowDef).ToString());
             }
 
-            for (int lCol = 0; lCol <= mColumns; lCol++)
+            for (int lCol = 0; lCol < mColumns; lCol++)
             {
                 colDef = new ColumnDefinition();
                 this.ColumnDefinitions.Insert(this.ColumnDefinitions.Count, colDef);

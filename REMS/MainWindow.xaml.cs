@@ -19,6 +19,7 @@ using REMS.data;
 using System.Windows.Threading;
 using NationalInstruments.Controls;
 using System.Collections.ObjectModel;
+using System.IO;
 
 namespace REMS
 {
@@ -42,6 +43,9 @@ namespace REMS
         public double motorXTravelDistance;
         public double motorYTravelDistance;
         public double motorZTravelDistance;
+
+        private int _SAMinFrequency;
+        private int _SAMaxFrequency;
         //private int motorZTravelDistance = 100;
 
         // Timers
@@ -106,26 +110,30 @@ namespace REMS
         // select image to set scan area and zoom in on picture
         //http://www.codeproject.com/Articles/148503/Simple-Drag-Selection-in-WPF
 
-        private void populateGraph(int x, int y, int rows, int columns)
-        {
-            int numberOfPoints = 461;
-            int lineNum = (x * rows) + y + 1;
-                
-            string line = Logger.getLineFromFile(mLogFileName, lineNum);
-            if (line != null)
+        private void populateGraph(int aRow, int aCol, int aZPos)
+        {          
+            string[] lLine = Logger.getLineFromFile(mLogFileName, Convert.ToString(aRow), 
+                                                    Convert.ToString(aCol), Convert.ToString(aZPos));
+            if (lLine != null)
             {
-                int[] data = new int[numberOfPoints];
-                var temp = line.Split(',');
-                for (int i = 3; i < temp.Length; i++)
+                int numberOfPoints = lLine.Length - 3;
+                double stepSize = (double)(_SAMaxFrequency - _SAMinFrequency) / (numberOfPoints);
+                double currFreq = _SAMinFrequency;
+
+                Point[] data = new Point[numberOfPoints];
+                
+                for (int i = 0; i < numberOfPoints; i++)
                 {
-                    data[i - 3] = Convert.ToInt32(temp[i]);
+                    data[i] = new Point(currFreq, Convert.ToInt32(lLine[i + 3]));
+
+                    currFreq += stepSize;
                 }
                 
                 graph1.Data[1] = data;
             }
             else
             {
-                MessageBox.Show("No Data at " + x + " " + y);
+                MessageBox.Show("Still Writing data to file. Please try again.");
             }
         }
 
@@ -171,6 +179,7 @@ namespace REMS
                     setGUIControlIsEnabled(true);
 
                     currentScanDirection = Constants.direction.South;
+                    currentZScanIndex = 0;
 
                     if (previousState == Constants.state.Stopped)
                     {
@@ -472,7 +481,7 @@ namespace REMS
             if (e.ClickCount == 2) // for double-click, remove this condition if only want single click
             {
                 Point cell = mHeatMap.getClickedCell(sender, e);
-                populateGraph((int)cell.X, (int)cell.Y, (int)xScanPoints, (int)yScanPoints);
+                populateGraph((int)cell.X, (int)cell.Y, ((ScanLevel)dgZScanPoints.SelectedItem).ZPos);
                 mHeatMapPixelClicked = true;
             }
         }
@@ -540,7 +549,7 @@ namespace REMS
 
         private void dataGridScanLevel_MouseUp(object sender, MouseButtonEventArgs e)
         {
-
+            
         }
 
         /**
@@ -750,12 +759,11 @@ namespace REMS
             motorZPos = nsZMin.Value;
 
             // Update the scan area width and length
-            xScanPoints = (int)(motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value;
-            yScanPoints = (int)(motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value;
+            xScanPoints = (int)((motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value) + 1;
+            yScanPoints = (int)((motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value) + 1;
 
             // Calculate how long it will take
             int numXYPlanes = (int)Math.Ceiling((double)(nsZMax.Value - nsZMin.Value) / (double)nsZStepSize.Value) + 1;
-            //zScanPoints = new int[numXYPlanes];
 
             _scans.Clear();
             for (int i = 0; i < numXYPlanes; i++)
@@ -764,9 +772,9 @@ namespace REMS
                 if(temp > (int)nsZMax.Value) temp = (int)nsZMax.Value;
                 ScanLevel lScan = new ScanLevel(temp);
                 _scans.Add(lScan);
-                //zScanPoints[i] = temp;
             }
             dgZScanPoints.ItemsSource = _scans;
+            dgZScanPoints.SelectedIndex = 0;
 
             totalScanPoints = Convert.ToInt32(xScanPoints * yScanPoints * numXYPlanes);
 
@@ -821,6 +829,54 @@ namespace REMS
                 Brushes.Blue);
         }
 
+        private Boolean analyzeScannedData(int[] data)
+        {
+            // 6.7mhz
+            // 100mhz
+            Boolean lResult = true; // Default to Passed;
+
+            double stepSize = (double)(_SAMaxFrequency - _SAMinFrequency) / data.Count();
+            double currFreq = _SAMinFrequency;
+            int index = 0;
+            foreach (int lreading in data)
+            {
+                foreach (ThresholdViewModel lThreshold in _thresholds)
+                {
+                    ThresholdLimitViewModel prevLimit = null;
+                    foreach (ThresholdLimitViewModel lLimit in lThreshold.Limits)
+                    {
+                        if (prevLimit == null)
+                            prevLimit = lLimit;
+                        
+                        if (currFreq > Convert.ToInt32(lLimit.Frequency))
+                        {
+                            prevLimit = lLimit;
+                            continue;
+                        }
+                        
+                        if (lreading > Convert.ToInt32(prevLimit.Amplitude))
+                        {
+                            lThreshold.State = "Failed";
+                            lResult = false;
+                            break;
+                        }
+                    }
+
+                    if (!lResult)
+                        break;
+                }
+
+                if (!lResult)
+                    break;
+
+                currFreq += stepSize;
+                index++;
+            }
+
+
+            return lResult;
+        }
+
         private void moveMotors_Tick(object sender, EventArgs e)
         {
             _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "In Progress";
@@ -835,7 +891,8 @@ namespace REMS
             int nextY = motorYPos;
             int nextZ = motorZPos;
 
-            Logger.writeToFile(mLogFileName, nextX, nextY, 0, getScannedData(461));
+            int[] lData = getScannedData(461);
+            Boolean lStatus = analyzeScannedData(lData);
 
             // Update the motor position text
             lblXPosition.Text = nextX.ToString();
@@ -845,7 +902,16 @@ namespace REMS
             // draw heat map pixel
             int row = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
             int col = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
-            mHeatMap.drawPixel(row, col, Colors.Blue);
+
+            Logger.writeToFile(mLogFileName, row, col, nextZ, lData);
+            
+            Color lcolor = Colors.Blue;
+            
+            if (!lStatus)
+                lcolor = Colors.Red;
+            
+            if(motorZPos == ((ScanLevel)dgZScanPoints.SelectedItem).ZPos)
+                mHeatMap.drawPixel(row, col, lcolor);
 
             // Determine the next scan position
             if (currentScanDirection == Constants.direction.South)
@@ -871,7 +937,9 @@ namespace REMS
 
             if (nextX > motorScanAreaPoints[1].X)
             {
-                if (nextZ + nsZStepSize.Value > nsZMax.Value)
+                _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "Complete";
+
+                if (nextZ == nsZMax.Value)
                 {
                     simulatorTimer.Stop();
                     transitionToState(Constants.state.Overview);
@@ -882,22 +950,33 @@ namespace REMS
                     MessageBoxImage icon = MessageBoxImage.Information;
                     MessageBox.Show(messageBoxText, caption, button, icon);
                 }
-                else
+                else if (nextZ + nsZStepSize.Value > nsZMax.Value)
                 {
-                    nextZ += nsZStepSize.Value;
+                    nextZ = nsZMax.Value;
 
-                    _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "Complete";
-                    
                     currentZScanIndex++;
 
                     // Put the motors back to their starting positions
                     nextX = Convert.ToInt32(motorScanAreaPoints[0].X);
                     nextY = Convert.ToInt32(motorScanAreaPoints[0].Y);
                     currentScanDirection = Constants.direction.South;
-                    
 
 
-                    mHeatMap.ClearPixels();
+
+                    //mHeatMap.ClearPixels();
+                }
+                else
+                {
+                    nextZ += nsZStepSize.Value;
+
+                    currentZScanIndex++;
+
+                    // Put the motors back to their starting positions
+                    nextX = Convert.ToInt32(motorScanAreaPoints[0].X);
+                    nextY = Convert.ToInt32(motorScanAreaPoints[0].Y);
+                    currentScanDirection = Constants.direction.South;
+
+                    //mHeatMap.ClearPixels();
                 }
             }
                 
@@ -928,20 +1007,17 @@ namespace REMS
 
             for (int i = 0; i < aPoints; i++)
             {
-                data[i] = rNum.Next(110) - rNum.Next(40);
-                if (i > 82)
-                    data[i] += rNum.Next(60) - rNum.Next(20);
-                if(i > 216)
+                int num = rNum.Next(110) - rNum.Next(150);
+                if (num < 0)
+                    num = -(num/2);
+                //int num = 85;
+
+                data[i] = num;
+                if (i > 420)
                     data[i] += rNum.Next(60) - rNum.Next(20);
             }
 
             return data;
-        }
-
-        private Boolean analyzeScannedData(int[] aData, ThresholdViewModel aThreshold)
-        {
-
-            return true;
         }
 
         private void startSimulator()
@@ -963,6 +1039,9 @@ namespace REMS
             motorZTravelDistance = Properties.Settings.Default.motorZTravelDistance;
 
             sHeatMapOpacity.Value = Properties.Settings.Default.heatMapOpacity;
+
+            _SAMinFrequency = Properties.Settings.Default.SAMinFrequency;
+            _SAMaxFrequency = Properties.Settings.Default.SAMaxFrequency;
 
             nsXStepSize.Value = (int)Properties.Settings.Default["nsXStepSize"];
             nsYStepSize.Value = (int)Properties.Settings.Default["nsYStepSize"];
@@ -1010,6 +1089,53 @@ namespace REMS
             nsZMax.IsEnabled = aIsEnabled;
             nsZMin.IsEnabled = aIsEnabled;
         }
-        
+
+        public void drawHeatMapFromFile(string aFileName, String aZPos)
+        {
+            mHeatMap.ClearPixels();
+            string[] lLine = null;
+            Boolean lFoundData = false;
+            if (aFileName != null)
+            {
+                using (StreamReader srLog = new StreamReader(aFileName))
+                {
+                    while (srLog.Peek() >= 0)
+                    {
+                        lLine = srLog.ReadLine().Split(',');
+                        if (lLine[2] == aZPos)
+                        {
+                            lFoundData = true;
+                            int[] lData = new int[lLine.Count() - 3];
+                            //Array.Copy(lLine, 3, data, 0, lLine.Count() - 3);
+
+                            for (int i = 0; i < lLine.Count() - 3; i++)
+                            {
+                                try
+                                {
+                                    lData[i] = Convert.ToInt32(lLine[i + 3]);
+                                }
+                                catch (Exception) { };
+                            }
+
+                            Boolean status = analyzeScannedData(lData);
+
+                            Color lcolor = Colors.Blue;
+                            if (!status)
+                                lcolor = Colors.Red;
+
+                            mHeatMap.drawPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lcolor);
+                        }
+                        else if (lFoundData)
+                            break;
+                    }
+                }
+            }
+        }
+
+        private void dgZScanPoints_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
+            
+            drawHeatMapFromFile(mLogFileName, Convert.ToString(((ScanLevel)dgZScanPoints.SelectedItem).ZPos));
+        }
     }
 }
