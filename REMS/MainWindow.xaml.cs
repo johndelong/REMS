@@ -51,11 +51,11 @@ namespace REMS
         // Timers
         private DispatcherTimer simulatorTimer;
         private CountdownTimer CDTimer;
-        
+
         private double canvasXStepSize, canvasYStepSize;
 
         //private double heatMapOpacity;
-        
+
         private int numOfCalibrationPoints = 0;
 
         //private Boolean imageLoaded = false;
@@ -63,14 +63,14 @@ namespace REMS
         private Constants.state currentState = Constants.state.Initial;
         private Constants.state previousState;
         private Constants.direction currentScanDirection;
-        
+
         private ImageSource mLoadedImage;
 
         bool mouseDown = false; // Set to 'true' when mouse is held down.
         Point canvasMouseDownPos; // The point where the mouse button was clicked down on the image.
         Point canvasMouseUpPos;
         int motorXPos, motorYPos, motorZPos;
-        
+
         private int xScanPoints = 0;
         private int yScanPoints = 0;
         //private int[] zScanPoints;
@@ -78,11 +78,11 @@ namespace REMS
         private int totalScanPoints = 0;
 
         private int currentZScanIndex = 0;
-        
+
         // File Names
-        private string mFileName = "";
+        //private string mFileName = "";
         private string mLogFileName;
-        
+
         private Boolean mHeatMapPixelClicked = false;
 
         // Connected Devices
@@ -104,15 +104,15 @@ namespace REMS
 
             analyzeGrid.ItemsSource = _thresholds;
 
-            transitionToState(Constants.state.Initial);
+            transitionToState(Constants.state.Overview);
         }
 
         // select image to set scan area and zoom in on picture
         //http://www.codeproject.com/Articles/148503/Simple-Drag-Selection-in-WPF
 
         private void populateGraph(int aRow, int aCol, int aZPos)
-        {          
-            string[] lLine = Logger.getLineFromFile(mLogFileName, Convert.ToString(aRow), 
+        {
+            string[] lLine = Logger.getLineFromFile(mLogFileName + ".csv", Convert.ToString(aRow),
                                                     Convert.ToString(aCol), Convert.ToString(aZPos));
             if (lLine != null)
             {
@@ -121,14 +121,14 @@ namespace REMS
                 double currFreq = _SAMinFrequency;
 
                 Point[] data = new Point[numberOfPoints];
-                
+
                 for (int i = 0; i < numberOfPoints; i++)
                 {
                     data[i] = new Point(currFreq, Convert.ToInt32(lLine[i + 3]));
 
                     currFreq += stepSize;
                 }
-                
+
                 graph1.Data[1] = data;
             }
             else
@@ -145,7 +145,7 @@ namespace REMS
             int pos = 0;
             for (int i = 1; i < aThreshold.Limits.Count * 2; i++)
             {
-                if(i % 2 == 0)
+                if (i % 2 == 0)
                     freq = Convert.ToInt32(aThreshold.Limits[i / 2].Frequency);
                 else
                     amp = Convert.ToInt32(aThreshold.Limits[i / 2].Amplitude);
@@ -178,10 +178,12 @@ namespace REMS
                     // Enable all GUI Controls
                     setGUIControlIsEnabled(true);
 
-                    currentScanDirection = Constants.direction.South;
-                    currentZScanIndex = 0;
+                    btnCaptureImage.IsEnabled = true;
 
-                    if (previousState == Constants.state.Stopped)
+                    currentScanDirection = Constants.direction.South;
+                    dgZScanPoints.ItemsSource = null;
+
+                    if (previousState == Constants.state.Overview)
                     {
                         // Remmove captured image and heat map
                         mLoadedImage = null;
@@ -190,7 +192,10 @@ namespace REMS
                     mHeatMap.Clear();
 
                     // Update Status
-                    lblStatus.Text = Constants.StatusInitial;
+                    if (mLoadedImage == null)
+                        lblStatus.Text = Constants.StatusInitial1;
+                    else
+                        lblStatus.Text = Constants.StatusInitial2;
 
                     // Show captured image
                     imageCaptured.Source = mLoadedImage;
@@ -238,6 +243,9 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = true;
 
+                    // Disable all GUI Controls
+                    setGUIControlIsEnabled(false);
+
                     btnCalibrate.IsEnabled = false;
 
                     // Update Status
@@ -260,17 +268,11 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = false;
 
-                    // Disable all GUI Controls
-                    setGUIControlIsEnabled(false);
-
                     // Update Status
                     lblStatus.Text = Constants.StatusScanning;
 
                     // Hide drawing canvas
                     canvasDrawing.Visibility = Visibility.Collapsed;
-                    
-                    // Name the log file
-                    mLogFileName = string.Format("Scan_{0:yyyy-MM-dd_hh-mm-ss}.csv", DateTime.Now);
 
                     // Start the simulator
                     startSimulator();
@@ -295,24 +297,41 @@ namespace REMS
                     // Stop the count down timer
                     CDTimer.Stop();
 
-               
-                    
                     break;
 
                 case Constants.state.Overview:
                     // Update Buttons
-                    btnCancel.Content = "Reset";
+                    btnCancel.Content = "Cancel";
                     btnCancel.Background = null;
-                    btnCancel.IsEnabled = true;
+                    btnCancel.IsEnabled = false;
 
-                    btnAccept.Content = "Start";
+                    btnAccept.Content = "Accept";
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
+
+                    // Update Status
+                    lblStatus.Text = Constants.StatusOverview;
+
+                    // Disable main gui buttons
+                    setGUIControlIsEnabled(false);
+
+                    // Disable Menu Items
+                    btnCalibrate.IsEnabled = false;
+                    btnCaptureImage.IsEnabled = false;
+
+                    if (mLoadedImage == null)
+                        btnSaveHeatMap.IsEnabled = false;
+                    else
+                        btnSaveHeatMap.IsEnabled = true;
+
+                    canvasDrawing.Visibility = Visibility.Collapsed;
+
+
                     break;
             }
         }
 
-        
+
 
 
 
@@ -372,6 +391,9 @@ namespace REMS
             }
             else if (currentState == Constants.state.Ready)
             {
+                // Save the image to be referenced later
+                Imaging.SaveToJPG((BitmapSource)imageCaptured.Source, mLogFileName + ".jpg");
+
                 transitionToState(Constants.state.Scanning);
             }
             else if (currentState == Constants.state.Stopped)
@@ -394,6 +416,14 @@ namespace REMS
             }
         }
 
+        private void click_newScan(object sender, RoutedEventArgs e)
+        {
+            mLogFileName = string.Format("Scan_{0:yyyy-MM-dd_hh-mm-ss}", DateTime.Now);
+
+            if (DialogBox.save("LOG", mLogFileName))
+                transitionToState(Constants.state.Initial);
+        }
+
         /// <summary>
         /// Called on "Open" menu item click
         /// </summary>
@@ -401,68 +431,76 @@ namespace REMS
         /// <param name="e"></param>
         private void click_open(object sender, RoutedEventArgs e)
         {
-            // Create OpenFileDialog 
-            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            transitionToState(Constants.state.Overview);
 
-            // Set filter for file extension and default file extension 
-            //dlg.DefaultExt = ".csv";
-            //dlg.Filter = "CSV Files (*.csv)|*.csv|JPEG Files (*.jpeg)|*.jpeg|PNG Files (*.png)|*.png|JPG Files (*.jpg)|*.jpg|GIF Files (*.gif)|*.gif";
-
-            // Display OpenFileDialog by calling ShowDialog method 
-            Nullable<bool> result = dlg.ShowDialog();
-
-            // Get the selected file name and display in a TextBox 
-            if (result == true)
+            string lFileName = "";
+            
+            if (DialogBox.open("LOG", lFileName))
             {
-                // Open document 
-                mFileName = dlg.FileName;
-                //textBox1.Text = mFilename;
+                String[] tokens = lFileName.Split('.');
+                mLogFileName = tokens[0];
 
-                String[] tokens = mFileName.Split('.');
+                // Read In the Log file
+                LogReader.openReport(mLogFileName + ".csv", mHeatMap, dgZScanPoints);
 
-                if (tokens[1] == "csv")
+                // Try to read in the scan image with the same file name
+                try
                 {
-                    Logger.read_csv("Test.csv");
-                }
+                    mLoadedImage = Imaging.openImageSource(mLogFileName + ".jpg");
+                    imageCaptured.Source = mLoadedImage;
 
-                //if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
-                //{
-                //    open_image();
-                //}
+                    btnSaveHeatMap.IsEnabled = true;
+                }
+                catch (Exception)
+                {
+                    string messageBoxText = "No image file was found! To correlate the heat map to a scanned component, the image file is needed. Would you like to locate the file?";
+                    string caption = "Information";
+                    MessageBoxButton button = MessageBoxButton.YesNo;
+                    MessageBoxImage icon = MessageBoxImage.Information;
+                    MessageBoxResult rsltMessageBox = MessageBox.Show(messageBoxText, caption, button, icon);
+
+                    switch (rsltMessageBox)
+                    {
+                        case MessageBoxResult.Yes:
+                            prompt_ScannedImage();
+                            break;
+
+                        case MessageBoxResult.No:
+                            /* Do Nothing */
+                            break;
+                    }
+                }
+            }
+        }
+
+        private void prompt_ScannedImage()
+        {
+            string lFileName = "";
+            if (DialogBox.save("IMAGE", lFileName))
+            {
+                try
+                {
+                    mLoadedImage = Imaging.openImageSource(lFileName);
+                    imageCaptured.Source = mLoadedImage;
+                }
+                catch (Exception) { }
             }
         }
 
         private void click_capture_image(object sender, RoutedEventArgs e)
         {
-            // Create OpenFileDialog 
-            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-
-            // Set filter for file extension and default file extension 
-            dlg.DefaultExt = ".jpg";
-            dlg.Filter = "JPG Files (*.jpg)|*.jpg|JPEG Files (*.jpeg)|*.jpeg|PNG Files (*.png)|*.png";
-
-            // Display OpenFileDialog by calling ShowDialog method 
-            Nullable<bool> result = dlg.ShowDialog();
-
-            // Get the selected file name and display in a TextBox 
-            if (result == true)
+            string lFileName = "";
+            if (DialogBox.open("IMAGE", lFileName))
             {
-                // Open document 
-                mFileName = dlg.FileName;
-                //textBox1.Text = mFilename;
-
-                //String[] tokens = mFileName.Split('.');
-
-                //if (tokens[1] == "jpg" || tokens[1] == "png" || tokens[1] == "jpeg")
-                //{
-
-
-                mLoadedImage = Imaging.openImageSource(mFileName);
-                imageCaptured.Source = mLoadedImage;
-                //imageLoaded = true;
-                canvasDrawing.Visibility = Visibility.Visible;
-                btnCalibrate.IsEnabled = true;
-                //}
+                try
+                {
+                    mLoadedImage = Imaging.openImageSource(lFileName);
+                    imageCaptured.Source = mLoadedImage;
+                    canvasDrawing.Visibility = Visibility.Visible;
+                    btnCalibrate.IsEnabled = true;
+                    lblStatus.Text = Constants.StatusInitial2;
+                }
+                catch (Exception) { }
             }
         }
 
@@ -471,7 +509,7 @@ namespace REMS
             PrefPopup popup = new PrefPopup();
             popup.ShowDialog();
             loadUserPreferences();
-            
+
             _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
             analyzeGrid.ItemsSource = _thresholds;
         }
@@ -497,20 +535,10 @@ namespace REMS
 
         private void click_saveHeatMapImage(object sender, RoutedEventArgs e)
         {
-            RenderTargetBitmap rtb = new RenderTargetBitmap((int)gridResultsTab.RenderSize.Width,
-                                                            (int)gridResultsTab.RenderSize.Height, 
-                                                            96d, 96d, System.Windows.Media.PixelFormats.Default);
-            rtb.Render(gridResultsTab);
+            string lFileName = "";
 
-            //var crop = new CroppedBitmap(rtb, new Int32Rect(50, 50, 250, 250));
-
-            BitmapEncoder pngEncoder = new PngBitmapEncoder();
-            pngEncoder.Frames.Add(BitmapFrame.Create(rtb));
-
-            using (var fs = System.IO.File.OpenWrite("logo.png"))
-            {
-                pngEncoder.Save(fs);
-            }
+            if(DialogBox.save("IMAGE", lFileName))
+                Imaging.SaveToJPG(gridResultsTab, lFileName);
         }
 
         private void motorJogUp_Click(object sender, RoutedEventArgs e)
@@ -549,7 +577,7 @@ namespace REMS
 
         private void dataGridScanLevel_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            
+
         }
 
         /**
@@ -572,7 +600,7 @@ namespace REMS
             canvasMouseDownPos = e.GetPosition(canvasDrawing);
 
             //Console.WriteLine("X: " + canvasMouseDownPos.X + " Y: " + canvasMouseDownPos.Y);
-            if(imageCaptured.Source != null)
+            if (imageCaptured.Source != null)
             {
                 if (currentState == Constants.state.Initial)
                 {
@@ -647,11 +675,13 @@ namespace REMS
                     {
                         scanAreaSet = true;
                         btnAccept.IsEnabled = true;
+                        lblStatus.Text = Constants.StatusInitial3;
                     }
                     else
                     {
                         scanAreaSet = false;
                         btnAccept.IsEnabled = false;
+                        lblStatus.Text = Constants.StatusInitial2;
                     }
 
                 }
@@ -742,7 +772,8 @@ namespace REMS
             canvasScanArea = Utilities.determineOpositeCorners(canvasMouseDownPos, canvasMouseUpPos);
 
             // Zoom in on the scan area
-            imageCaptured.Source = Imaging.cropImage(imageCaptured, canvasScanArea[0], canvasScanArea[1]);
+            ImageSource lImage = Imaging.cropImage(imageCaptured, canvasScanArea[0], canvasScanArea[1]);
+            imageCaptured.Source = lImage;
 
             canvasXStepSize = (canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X) / motorXTravelDistance;
             canvasYStepSize = (canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y) / motorYTravelDistance;
@@ -769,7 +800,7 @@ namespace REMS
             for (int i = 0; i < numXYPlanes; i++)
             {
                 int temp = (int)(nsZMin.Value + (nsZStepSize.Value * i));
-                if(temp > (int)nsZMax.Value) temp = (int)nsZMax.Value;
+                if (temp > (int)nsZMax.Value) temp = (int)nsZMax.Value;
                 ScanLevel lScan = new ScanLevel(temp);
                 _scans.Add(lScan);
             }
@@ -797,17 +828,17 @@ namespace REMS
         private void onClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             //srLog.Close(); // close stream to log file
-            
+
             // Release Connected Devices
             Vxm.ReleaseDriver();
 
             // Save User Preferences
             saveUserPreferences();
 
-            
+
         }
 
-       
+
 
 
         /**
@@ -847,13 +878,13 @@ namespace REMS
                     {
                         if (prevLimit == null)
                             prevLimit = lLimit;
-                        
+
                         if (currFreq > Convert.ToInt32(lLimit.Frequency))
                         {
                             prevLimit = lLimit;
                             continue;
                         }
-                        
+
                         if (lreading > Convert.ToInt32(prevLimit.Amplitude))
                         {
                             lThreshold.State = "Failed";
@@ -883,7 +914,7 @@ namespace REMS
 
             // Start the count down timer if it is
             // not already started
-            if(!CDTimer.Enabled)
+            if (!CDTimer.Enabled)
                 CDTimer.Start();
 
             // Move the motors to the next location
@@ -903,14 +934,14 @@ namespace REMS
             int row = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
             int col = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
 
-            Logger.writeToFile(mLogFileName, row, col, nextZ, lData);
-            
+            Logger.writeToFile(mLogFileName + ".csv", row, col, nextZ, lData);
+
             Color lcolor = Colors.Blue;
-            
+
             if (!lStatus)
                 lcolor = Colors.Red;
-            
-            if(motorZPos == ((ScanLevel)dgZScanPoints.SelectedItem).ZPos)
+
+            if (motorZPos == ((ScanLevel)dgZScanPoints.SelectedItem).ZPos)
                 mHeatMap.drawPixel(row, col, lcolor);
 
             // Determine the next scan position
@@ -979,7 +1010,7 @@ namespace REMS
                     //mHeatMap.ClearPixels();
                 }
             }
-                
+
             motorXPos = nextX;
             motorYPos = nextY;
             motorZPos = nextZ;
@@ -1009,7 +1040,7 @@ namespace REMS
             {
                 int num = rNum.Next(110) - rNum.Next(150);
                 if (num < 0)
-                    num = -(num/2);
+                    num = -(num / 2);
                 //int num = 85;
 
                 data[i] = num;
@@ -1066,7 +1097,7 @@ namespace REMS
             Properties.Settings.Default.nsZMax = nsZMax.Value;
 
             Properties.Settings.Default.heatMapOpacity = sHeatMapOpacity.Value;
-            
+
             Properties.Settings.Default.Save();
         }
 
@@ -1095,7 +1126,7 @@ namespace REMS
             mHeatMap.ClearPixels();
             string[] lLine = null;
             Boolean lFoundData = false;
-            if (aFileName != null)
+            try
             {
                 using (StreamReader srLog = new StreamReader(aFileName))
                 {
@@ -1130,12 +1161,18 @@ namespace REMS
                     }
                 }
             }
+            catch (Exception)
+            {
+                Console.WriteLine("File not found: " + aFileName);
+            }
         }
 
         private void dgZScanPoints_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
         {
-            
-            drawHeatMapFromFile(mLogFileName, Convert.ToString(((ScanLevel)dgZScanPoints.SelectedItem).ZPos));
+            if (dgZScanPoints.SelectedItem != null)
+                drawHeatMapFromFile(mLogFileName + ".csv", Convert.ToString(((ScanLevel)dgZScanPoints.SelectedItem).ZPos));
         }
+
+
     }
 }

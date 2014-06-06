@@ -11,11 +11,12 @@
         <DockPanel >
             <Menu DockPanel.Dock="Top">
                 <MenuItem Header="_File">
-                    <MenuItem Header="_Open" Click="click_open"/>
-                    <MenuItem Header="_Close"/>
-                    <MenuItem Header="_Save"/>
-                    <MenuItem Header="_Save HeatMap" Click="click_saveHeatMapImage" />
-                    <MenuItem Header="_Preferences" Click="click_preferences"/>
+                    <MenuItem Header="_New Scan" Name="btnNewScan" Click="click_newScan" />
+                    <MenuItem Header="_Open" Name="btnOpen" Click="click_open"/>
+                    <!--<MenuItem Header="_Open Log File" Click="click_openLogFile"/>-->
+                    <MenuItem Header="_Close" Name="btnClose"/>
+                    <MenuItem Header="_Save HeatMap" Name="btnSaveHeatMap" Click="click_saveHeatMapImage" />
+                    <MenuItem Header="_Preferences" Name="btnPreferences" Click="click_preferences"/>
                     <MenuItem Header="_Exit"/>
                 </MenuItem>
                 <MenuItem Header="_Devices">
@@ -24,7 +25,7 @@
                     <MenuItem Header="_Spectrum Analyzer"/>
                 </MenuItem>
                 <MenuItem Header="_Tools">
-                    <MenuItem Header="_Capture Image" Click="click_capture_image"/>
+                    <MenuItem Header="_Capture Image" Name="btnCaptureImage" Click="click_capture_image"/>
                     <MenuItem Header="_Calibrate" Name="btnCalibrate" Click="click_calibrate"/>
                 </MenuItem>
             </Menu>
@@ -203,8 +204,8 @@
                                 </Style>
                             </DataGrid.ItemContainerStyle>
                         </DataGrid>
-
-                        <Image Name="imageCaptured" Grid.Column="1" SizeChanged="imageResized" />
+                        
+                        <Image Name="imageCaptured" Grid.Column="1" Width="auto" Height="auto" SizeChanged="imageResized" />
 
                         <classes:HeatMap x:Name="mHeatMap" Grid.Column="1" 
                                          ShowGridLines="true" MouseDown="click_heatMapMouseDown" 
@@ -218,6 +219,7 @@
                             MouseUp="Grid_MouseUp"
                             MouseMove="Grid_MouseMove"
                             Background="Transparent"
+                            Visibility="Collapsed"
                             Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
                     </Grid>
                 </TabItem>

@@ -16,13 +16,16 @@ namespace REMS.classes
 {
     public static class Constants
     {
-        public static readonly string StatusInitial         = "Click and drag to determine scan area";
-        public static readonly string StatusReady           = "Ready to start scanning";
-        public static readonly string StatusStopped         = "Scanning paused";
-        public static readonly string StatusScanning        = "Scanning...";
-        public static readonly string StatusDone            = "Scan has finished";
-        public static readonly string StatusCalibration1    = "Accurately click OPPOSITE corners of servo travel area";
-        public static readonly string StatusCalibration2    = "Click 'Accept' if satisfied with calibration";
+        public static readonly string StatusInitial1 = "Click 'Tools>Capture Image' to define the scan area";
+        public static readonly string StatusInitial2 = "Click and drag to determine scan area";
+        public static readonly string StatusInitial3 = "Click accept when desired scan area has been selected";
+        public static readonly string StatusReady = "Ready to start scanning";
+        public static readonly string StatusStopped = "Scanning paused";
+        public static readonly string StatusScanning = "Scanning...";
+        public static readonly string StatusOverview = "To start a new scan, click 'File>New Scan'";
+        public static readonly string StatusDone = "Scan has finished";
+        public static readonly string StatusCalibration1 = "Accurately click OPPOSITE corners of servo travel area";
+        public static readonly string StatusCalibration2 = "Click 'Accept' if satisfied with calibration";
 
         public enum state : int
         {
@@ -109,12 +112,83 @@ namespace REMS.classes
         }
     }
 
+    public static class DialogBox
+    {
+        public static Boolean save(string aType, string aFileName = "")
+        {
+            Microsoft.Win32.SaveFileDialog dlg = new Microsoft.Win32.SaveFileDialog();
+            string lFileName = aFileName;
+            // Name the log file
+            dlg.FileName = lFileName;
+            switch (aType.ToUpper())
+            {
+                case "LOG":
+                    dlg.DefaultExt = ".csv";
+                    dlg.Filter = "CSV Files (*.csv)|*.csv";
+                    break;
+
+                case "IMAGE":
+                    dlg.DefaultExt = ".jpg";
+                    dlg.Filter = "JPG Files (*.jpg)|*.jpg|JPEG Files (*.jpeg)|*.jpeg";
+                    break;
+            }
+            
+            // Show save file dialog box
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Process save file dialog box results
+            if (result == true)
+            {
+                // Save document
+                aFileName = dlg.FileName;
+            }
+            else
+                result = false;
+
+            return (Boolean)result;
+        }
+
+        public static Boolean open(string aType = "LOG", string aFileName = "")
+        {
+            // Create OpenFileDialog 
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+
+            // Set filter for file extension and default file extension 
+            switch (aType.ToUpper())
+            {
+                case "LOG":
+                    dlg.DefaultExt = ".csv";
+                    dlg.Filter = "CSV Files (*.csv)|*.csv";
+                    break;
+
+                case "IMAGE":
+                    dlg.DefaultExt = ".jpg";
+                    dlg.Filter = "JPG Files (*.jpg)|*.jpg|JPEG Files (*.jpeg)|*.jpeg";
+                    break;
+            }
+
+            // Display OpenFileDialog by calling ShowDialog method 
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Get the selected file name and display in a TextBox 
+            if (result == true)
+            {
+                // Open document 
+                aFileName = dlg.FileName;
+            }
+            else
+                result = false;
+            
+            return (Boolean)result;
+        }
+    }
+
     public static class Imaging
     {
         public static ImageSource openImageSource(string aFileName)
         {
             //aImgSource = null;
-            
+
             BitmapImage lImage = new BitmapImage(new Uri(aFileName));
             return ConvertBitmapTo96DPI(lImage);
             //imageCaptured.Source = loadedImage;
@@ -187,6 +261,103 @@ namespace REMS.classes
 
             return new Point(dblXPos, dblYPos);
         }
+
+        public static void SaveToJPG(FrameworkElement visual, string fileName)
+        {
+            var encoder = new JpegBitmapEncoder();
+            SaveUsingEncoder(visual, fileName, encoder);
+        }
+
+        public static void SaveToJPG(BitmapSource bitmap, string fileName)
+        {
+            var encoder = new JpegBitmapEncoder();
+            SaveUsingEncoder(bitmap, fileName, encoder);
+        }
+
+        public static void SaveToPng(FrameworkElement visual, string fileName)
+        {
+            var encoder = new PngBitmapEncoder();
+            SaveUsingEncoder(visual, fileName, encoder);
+        }
+
+        public static void SaveToPng(BitmapSource bitmap, string fileName)
+        {
+            var encoder = new PngBitmapEncoder();
+            SaveUsingEncoder(bitmap, fileName, encoder);
+        }
+
+        private static void SaveUsingEncoder(BitmapSource bitmap, string fileName, BitmapEncoder encoder)
+        {
+            BitmapFrame frame = BitmapFrame.Create(bitmap);
+            encoder.Frames.Add(frame);
+
+            using (var stream = File.Create(fileName))
+            {
+                encoder.Save(stream);
+            }
+        }
+
+        private static void SaveUsingEncoder(FrameworkElement visual, string fileName, BitmapEncoder encoder)
+        {
+            RenderTargetBitmap bitmap = new RenderTargetBitmap(
+                (int)visual.ActualWidth,
+                (int)visual.ActualHeight,
+                96,
+                96,
+                PixelFormats.Pbgra32);
+
+            bitmap.Render(visual);
+            BitmapFrame frame = BitmapFrame.Create(bitmap);
+            encoder.Frames.Add(frame);
+
+            using (var stream = File.Create(fileName))
+            {
+                encoder.Save(stream);
+            }
+        }
+    }
+
+    public static class LogReader
+    {
+        public static void openReport(string aFileName, HeatMap aHeatMap, DataGrid aScanLevels)
+        {
+            string[] lLine = null;
+            ObservableCollection<ScanLevel> lScanLevels = new ObservableCollection<ScanLevel>();
+            int lRows = 0;
+            int lCols = 0;
+            try
+            {
+                using (StreamReader srLog = new StreamReader(aFileName))
+                {
+                    while (srLog.Peek() >= 0)
+                    {
+                        lLine = srLog.ReadLine().Split(',');
+                        if (Convert.ToInt32(lLine[1]) > lRows)
+                            lRows = Convert.ToInt32(lLine[1]);
+
+                        if (Convert.ToInt32(lLine[0]) > lCols)
+                            lCols = Convert.ToInt32(lLine[0]);
+
+                        if (lScanLevels.Count() > 0)
+                        {
+                            if (lScanLevels.ElementAt<ScanLevel>(lScanLevels.Count() - 1).ZPos != Convert.ToInt32(lLine[2]))
+                                lScanLevels.Add(new ScanLevel(Convert.ToInt32(lLine[2]), "Complete"));
+                        }
+                        else
+                        {
+                            lScanLevels.Add(new ScanLevel(Convert.ToInt32(lLine[2]), "Complete"));
+                        }
+                    }
+                }
+                aHeatMap.Clear();
+                aHeatMap.Create(lRows, lCols);
+                aScanLevels.ItemsSource = lScanLevels;
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Error occured when trying to read in file");
+            }
+        }
     }
 
     public static class Logger
@@ -228,7 +399,7 @@ namespace REMS.classes
         /// <returns></returns>
         public static string[] getLineFromFile(string aFileName, String aRow, String aCol, String aZPos)
         {
-            string[] lResult = null; 
+            string[] lResult = null;
             using (StreamReader srLog = new StreamReader(aFileName))
             {
                 while (srLog.Peek() >= 0)
@@ -296,7 +467,7 @@ namespace REMS.classes
         public static ObservableCollection<ThresholdViewModel> GetThresholds()
         {
             ObservableCollection<ThresholdViewModel> lThresholds = new ObservableCollection<ThresholdViewModel>();
-           
+
             using (StreamReader sr = new StreamReader("Thresholds.csv"))
             {
                 string line;
