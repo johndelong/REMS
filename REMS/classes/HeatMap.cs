@@ -23,7 +23,7 @@ namespace REMS.classes
             // constructor
         }
 
-        public void Create(int Rows, int Columns)
+        public void Create(int Columns, int Rows)
         {
             mRows = Rows;
             mColumns = Columns;

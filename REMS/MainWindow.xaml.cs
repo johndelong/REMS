@@ -103,6 +103,7 @@ namespace REMS
             _scans = new ObservableCollection<ScanLevel>();
 
             analyzeGrid.ItemsSource = _thresholds;
+            analyzeGrid.SelectedIndex = 0;
 
             transitionToState(Constants.state.Overview);
         }
@@ -434,8 +435,8 @@ namespace REMS
             transitionToState(Constants.state.Overview);
 
             string lFileName = "";
-            
-            if (DialogBox.open("LOG", lFileName))
+
+            if (DialogBox.open(out lFileName, "LOG"))
             {
                 String[] tokens = lFileName.Split('.');
                 mLogFileName = tokens[0];
@@ -490,7 +491,7 @@ namespace REMS
         private void click_capture_image(object sender, RoutedEventArgs e)
         {
             string lFileName = "";
-            if (DialogBox.open("IMAGE", lFileName))
+            if (DialogBox.open(out lFileName, "IMAGE"))
             {
                 try
                 {
@@ -537,7 +538,7 @@ namespace REMS
         {
             string lFileName = "";
 
-            if(DialogBox.save("IMAGE", lFileName))
+            if (DialogBox.save("IMAGE", lFileName))
                 Imaging.SaveToJPG(gridResultsTab, lFileName);
         }
 
@@ -812,7 +813,7 @@ namespace REMS
             CDTimer = new CountdownTimer(lblCDTimer, totalScanPoints);
 
             // Initialize the heatmap
-            mHeatMap.Create((int)yScanPoints, (int)xScanPoints);
+            mHeatMap.Create((int)xScanPoints, (int)yScanPoints);
 
             lblXPosition.Text = motorXPos.ToString();
             lblYPosition.Text = motorYPos.ToString();
@@ -869,36 +870,29 @@ namespace REMS
             double stepSize = (double)(_SAMaxFrequency - _SAMinFrequency) / data.Count();
             double currFreq = _SAMinFrequency;
             int index = 0;
-            foreach (int lreading in data)
-            {
-                foreach (ThresholdViewModel lThreshold in _thresholds)
+            ThresholdViewModel lThreshold = ((ThresholdViewModel)analyzeGrid.SelectedItem);
+
+            foreach (int lreading in data) // number of data points collected
+            {                
+                ThresholdLimitViewModel prevLimit = null;
+                foreach (ThresholdLimitViewModel lLimit in lThreshold.Limits) // limits within this threshold
                 {
-                    ThresholdLimitViewModel prevLimit = null;
-                    foreach (ThresholdLimitViewModel lLimit in lThreshold.Limits)
+                    if (prevLimit == null)
+                        prevLimit = lLimit;
+
+                    if (currFreq > Convert.ToInt32(lLimit.Frequency))
                     {
-                        if (prevLimit == null)
-                            prevLimit = lLimit;
-
-                        if (currFreq > Convert.ToInt32(lLimit.Frequency))
-                        {
-                            prevLimit = lLimit;
-                            continue;
-                        }
-
-                        if (lreading > Convert.ToInt32(prevLimit.Amplitude))
-                        {
-                            lThreshold.State = "Failed";
-                            lResult = false;
-                            break;
-                        }
+                        prevLimit = lLimit;
+                        continue;
                     }
 
-                    if (!lResult)
+                    if (lreading > Convert.ToInt32(prevLimit.Amplitude))
+                    {
+                        lThreshold.State = "Failed";
+                        lResult = false;
                         break;
+                    }
                 }
-
-                if (!lResult)
-                    break;
 
                 currFreq += stepSize;
                 index++;
@@ -931,10 +925,10 @@ namespace REMS
             lblZPosition.Text = nextZ.ToString();
 
             // draw heat map pixel
-            int row = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
-            int col = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
+            int col = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
+            int row = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
 
-            Logger.writeToFile(mLogFileName + ".csv", row, col, nextZ, lData);
+            Logger.writeToFile(mLogFileName + ".csv", col, row, nextZ, lData);
 
             Color lcolor = Colors.Blue;
 
@@ -942,7 +936,7 @@ namespace REMS
                 lcolor = Colors.Red;
 
             if (motorZPos == ((ScanLevel)dgZScanPoints.SelectedItem).ZPos)
-                mHeatMap.drawPixel(row, col, lcolor);
+                mHeatMap.drawPixel(col, row, lcolor);
 
             // Determine the next scan position
             if (currentScanDirection == Constants.direction.South)
@@ -1149,7 +1143,7 @@ namespace REMS
                             }
 
                             Boolean status = analyzeScannedData(lData);
-
+                            Console.WriteLine(lLine[0] + " " + lLine[1] + " " + status);
                             Color lcolor = Colors.Blue;
                             if (!status)
                                 lcolor = Colors.Red;
@@ -1161,7 +1155,7 @@ namespace REMS
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 Console.WriteLine("File not found: " + aFileName);
             }

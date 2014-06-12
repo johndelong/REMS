@@ -148,7 +148,7 @@ namespace REMS.classes
             return (Boolean)result;
         }
 
-        public static Boolean open(string aType = "LOG", string aFileName = "")
+        public static Boolean open(out string aFileName, string aType = "LOG" )
         {
             // Create OpenFileDialog 
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
@@ -171,13 +171,9 @@ namespace REMS.classes
             Nullable<bool> result = dlg.ShowDialog();
 
             // Get the selected file name and display in a TextBox 
-            if (result == true)
-            {
-                // Open document 
-                aFileName = dlg.FileName;
-            }
-            else
-                result = false;
+            if (result != true) result = false;
+
+            aFileName = dlg.FileName;
             
             return (Boolean)result;
         }
@@ -350,7 +346,7 @@ namespace REMS.classes
                     }
                 }
                 aHeatMap.Clear();
-                aHeatMap.Create(lRows, lCols);
+                aHeatMap.Create(lCols + 1, lRows + 1);
                 aScanLevels.ItemsSource = lScanLevels;
             }
             catch (Exception)
