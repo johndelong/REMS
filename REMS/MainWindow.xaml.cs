@@ -861,17 +861,19 @@ namespace REMS
                 Brushes.Blue);
         }
 
-        private Boolean analyzeScannedData(int[] data)
+        private void analyzeScannedData(int[] data, out Boolean Passed, out int Value)
         {
             // 6.7mhz
             // 100mhz
-            Boolean lResult = true; // Default to Passed;
+            Passed = true; // Default to Passed;
+            Value = 0;
 
+            int lMinDifference;
             double stepSize = (double)(_SAMaxFrequency - _SAMinFrequency) / data.Count();
             double currFreq = _SAMinFrequency;
-            int index = 0;
-            ThresholdViewModel lThreshold = ((ThresholdViewModel)analyzeGrid.SelectedItem);
 
+            ThresholdViewModel lThreshold = ((ThresholdViewModel)analyzeGrid.SelectedItem);
+            lMinDifference = Convert.ToInt32(lThreshold.Limits[0].Amplitude);
             foreach (int lreading in data) // number of data points collected
             {                
                 ThresholdLimitViewModel prevLimit = null;
@@ -886,20 +888,24 @@ namespace REMS
                         continue;
                     }
 
+                    // If we have gotten this far, we know we are comparing 
+                    //the data to the right threshold
+                    if (Convert.ToInt32(prevLimit.Amplitude) - lreading < lMinDifference)
+                    {
+                        lMinDifference = Convert.ToInt32(prevLimit.Amplitude) - lreading;
+                        Value = lMinDifference * (-1);
+                    }
+
                     if (lreading > Convert.ToInt32(prevLimit.Amplitude))
                     {
                         lThreshold.State = "Failed";
-                        lResult = false;
+                        Passed = false;
                         break;
                     }
                 }
 
                 currFreq += stepSize;
-                index++;
             }
-
-
-            return lResult;
         }
 
         private void moveMotors_Tick(object sender, EventArgs e)
@@ -915,9 +921,11 @@ namespace REMS
             int nextX = motorXPos;
             int nextY = motorYPos;
             int nextZ = motorZPos;
+            Boolean lPassed;
+            int lValue;
 
             int[] lData = getScannedData(461);
-            Boolean lStatus = analyzeScannedData(lData);
+            analyzeScannedData(lData, out lPassed, out lValue);
 
             // Update the motor position text
             lblXPosition.Text = nextX.ToString();
@@ -930,13 +938,17 @@ namespace REMS
 
             Logger.writeToFile(mLogFileName + ".csv", col, row, nextZ, lData);
 
-            Color lcolor = Colors.Blue;
+            /*Color lcolor = Colors.Blue;
 
-            if (!lStatus)
-                lcolor = Colors.Red;
+            if (!lPassed)
+                lcolor = Colors.Red;*/
 
             if (motorZPos == ((ScanLevel)dgZScanPoints.SelectedItem).ZPos)
-                mHeatMap.drawPixel(col, row, lcolor);
+            {
+                //drawHeatMapFromFile(mLogFileName + ".csv", Convert.ToString(nextZ));
+                mHeatMap.drawPixel(col, row, lValue);
+                mHeatMap.refresh();
+            }
 
             // Determine the next scan position
             if (currentScanDirection == Constants.direction.South)
@@ -1120,6 +1132,8 @@ namespace REMS
             mHeatMap.ClearPixels();
             string[] lLine = null;
             Boolean lFoundData = false;
+            Boolean lPassed;
+            int lValue;
             try
             {
                 using (StreamReader srLog = new StreamReader(aFileName))
@@ -1142,20 +1156,22 @@ namespace REMS
                                 catch (Exception) { };
                             }
 
-                            Boolean status = analyzeScannedData(lData);
-                            Console.WriteLine(lLine[0] + " " + lLine[1] + " " + status);
+                            analyzeScannedData(lData, out lPassed,  out lValue);
+                            Console.WriteLine(lLine[0] + " " + lLine[1] + " " + lPassed);
                             Color lcolor = Colors.Blue;
-                            if (!status)
+                            if (!lPassed)
                                 lcolor = Colors.Red;
 
-                            mHeatMap.drawPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lcolor);
+                            mHeatMap.drawPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lValue);
                         }
                         else if (lFoundData)
                             break;
                     }
+
+
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 Console.WriteLine("File not found: " + aFileName);
             }

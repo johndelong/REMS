@@ -11,12 +11,25 @@ using System.Windows.Shapes;
 
 namespace REMS.classes
 {
+    public enum GraphType : int
+    {
+        Intensity,
+        Threshold
+    }
+
     public class HeatMap : Grid
     {
         private int mRows = 0;
         private int mColumns = 0;
         private double mPixelOpacity;
+        private int mIntensityMax = 0;
+        private int mIntensityMin = 0;
+        private Boolean mIntensityUpdates = false;
+        private List<Pixel> mPixels;
+        private GraphType mType = GraphType.Threshold;
 
+        public int IntensityMax { get; set; }
+        public int IntensityMin { get; set; }
 
         public HeatMap()
         {
@@ -28,6 +41,8 @@ namespace REMS.classes
             mRows = Rows;
             mColumns = Columns;
 
+            mPixels = new List<Pixel>();
+
             RowDefinition rowDef;
             ColumnDefinition colDef;
 
@@ -35,14 +50,12 @@ namespace REMS.classes
             {
                 rowDef = new RowDefinition();
                 this.RowDefinitions.Insert(this.RowDefinitions.Count, rowDef);
-                //Console.WriteLine(heat_map.RowDefinitions.IndexOf(rowDef).ToString());
             }
 
             for (int lCol = 0; lCol < mColumns; lCol++)
             {
                 colDef = new ColumnDefinition();
                 this.ColumnDefinitions.Insert(this.ColumnDefinitions.Count, colDef);
-                //Console.WriteLine(heat_map.ColumnDefinitions.IndexOf(colDef).ToString());
             }
         }
 
@@ -56,6 +69,9 @@ namespace REMS.classes
         public void ClearPixels()
         {
             this.Children.Clear();
+
+            if(mPixels != null)
+                mPixels.Clear();
         }
 
         public Point getClickedCell(object sender, MouseButtonEventArgs e)
@@ -104,6 +120,31 @@ namespace REMS.classes
             }
         }
 
+        public void drawPixel(int aCol, int aRow, int aValue)
+        {
+            mPixels.Add(new Pixel(aCol, aRow, aValue));
+
+            if (this.Children.Count == 0)
+            {
+                mIntensityMax = mIntensityMin = aValue;
+            }
+
+            if (aValue > mIntensityMax)
+            {
+                mIntensityMax = aValue;
+                mIntensityUpdates = true;
+            }
+            else if (aValue < mIntensityMin)
+            {
+                mIntensityMin = aValue;
+                mIntensityUpdates = true;
+            }
+
+            Color lColor = GetColor(mIntensityMin, mIntensityMax, aValue);
+
+            drawPixel(aCol, aRow, lColor);
+        }
+
         public void drawPixel(int aCol, int aRow, Color aColor)
         {
             Rectangle pixel = new Rectangle();
@@ -117,6 +158,78 @@ namespace REMS.classes
             pixel.Fill.Opacity = mPixelOpacity;
 
             this.Children.Add(pixel);
+        }
+
+        public void refresh()
+        {
+            if (mIntensityUpdates)
+            {
+
+                this.Children.Clear();
+                foreach (Pixel lPixel in mPixels)
+                {
+                    Color lColor = GetColor(mIntensityMin, mIntensityMax, lPixel.Value);
+                    drawPixel(lPixel.Column, lPixel.Row, lColor);
+                }
+                mIntensityUpdates = false;
+            }
+        }
+
+        private Color GetColor(int aMin /*Complete Blue*/, int aMax /*Complete Red*/, int aValue)
+        {
+            if (aMin >= aMax) return Colors.Black;
+
+            int lMaxColorValue = 255 * 4;
+
+            double lRange = aMax - aMin; // make the scale start from 0
+            double lActualValue = aValue - aMin; // adjust the value accordingly
+
+            double lPercentage = lActualValue / lRange;
+            int lColorValue = Convert.ToInt32(lMaxColorValue * lPercentage);
+
+            int blue = lColorValue <= 255 ? 255 : lColorValue > 255 * 2 ? 0 : 255 * 1 - lColorValue;
+            int green = lColorValue <= 255 ? lColorValue : lColorValue > 255 * 3 ? 255 * 4 - lColorValue : 255;
+            int red = lColorValue <= 255 * 2 ? 0 : lColorValue > 255 * 2 ? 255 : 255 * 3 - lColorValue;
+
+            // R = 255; G = 0;      B = 0;      255 * 4
+            // R = 255; G = 255;    B = 0;      255 * 3
+            // R = 0;   G = 255;    B = 0       255 * 2
+            // R = 0;   G = 255;    B = 255     255
+            // R = 0;   G = 0;      B = 255     0
+
+            return Color.FromRgb((Byte)red, (Byte)green, (Byte)blue);
+        }
+    }
+
+    public class Pixel
+    {
+        private int _column;
+        private int _row;
+        private int _value;
+
+        public Pixel(int Column, int Row, int Value)
+        {
+            _column = Column;
+            _row = Row;
+            _value = Value;
+        }
+
+        public int Column 
+        {
+            get { return _column; }
+            set { _column = value; }
+        }
+        
+        public int Row 
+        {
+            get { return _row; }
+            set { _row = value; }
+        }
+
+        public int Value 
+        {
+            get { return _value; }
+            set { _value = value; }
         }
     }
 }
