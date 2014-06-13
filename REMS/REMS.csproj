@@ -102,6 +102,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="classes\NewHeatMap.cs" />
     <Compile Include="classes\Person.cs" />
     <Compile Include="classes\CountdownTimer.cs" />
     <Compile Include="classes\HeatMap.cs" />

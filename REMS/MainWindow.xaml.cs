@@ -82,6 +82,7 @@ namespace REMS
         // File Names
         //private string mFileName = "";
         private string mLogFileName;
+        private string mFilePath;
 
         private Boolean mHeatMapPixelClicked = false;
 
@@ -419,10 +420,14 @@ namespace REMS
 
         private void click_newScan(object sender, RoutedEventArgs e)
         {
-            mLogFileName = string.Format("Scan_{0:yyyy-MM-dd_hh-mm-ss}", DateTime.Now);
+            String lFileName = string.Format("Scan_{0:yyyy-MM-dd_hh-mm-ss}", DateTime.Now);
 
-            if (DialogBox.save("LOG", mLogFileName))
+            if (DialogBox.save(out lFileName, "LOG", lFileName))
+            {
+                String[] tokens = lFileName.Split('.');
+                mLogFileName = tokens[0];
                 transitionToState(Constants.state.Initial);
+            }
         }
 
         /// <summary>
@@ -442,7 +447,7 @@ namespace REMS
                 mLogFileName = tokens[0];
 
                 // Read In the Log file
-                LogReader.openReport(mLogFileName + ".csv", mHeatMap, dgZScanPoints);
+                LogReader.openReport(mLogFileName + ".csv", mHeatMap, dgZScanPoints, IntensityColorKeyGrid);
 
                 // Try to read in the scan image with the same file name
                 try
@@ -476,12 +481,12 @@ namespace REMS
 
         private void prompt_ScannedImage()
         {
-            string lFileName = "";
-            if (DialogBox.save("IMAGE", lFileName))
+            string lFilePath = "";
+            if (DialogBox.open(out lFilePath, "IMAGE"))
             {
                 try
                 {
-                    mLoadedImage = Imaging.openImageSource(lFileName);
+                    mLoadedImage = Imaging.openImageSource(lFilePath);
                     imageCaptured.Source = mLoadedImage;
                 }
                 catch (Exception) { }
@@ -536,10 +541,10 @@ namespace REMS
 
         private void click_saveHeatMapImage(object sender, RoutedEventArgs e)
         {
-            string lFileName = "";
+            string lFilePath;
 
-            if (DialogBox.save("IMAGE", lFileName))
-                Imaging.SaveToJPG(gridResultsTab, lFileName);
+            if (DialogBox.save(out lFilePath, "IMAGE"))
+                Imaging.SaveToJPG(gridResultsTab, lFilePath);
         }
 
         private void motorJogUp_Click(object sender, RoutedEventArgs e)
@@ -813,7 +818,7 @@ namespace REMS
             CDTimer = new CountdownTimer(lblCDTimer, totalScanPoints);
 
             // Initialize the heatmap
-            mHeatMap.Create((int)xScanPoints, (int)yScanPoints);
+            mHeatMap.Create((int)xScanPoints, (int)yScanPoints, IntensityColorKeyGrid);
 
             lblXPosition.Text = motorXPos.ToString();
             lblYPosition.Text = motorYPos.ToString();
@@ -942,12 +947,12 @@ namespace REMS
 
             if (!lPassed)
                 lcolor = Colors.Red;*/
-
+            
             if (motorZPos == ((ScanLevel)dgZScanPoints.SelectedItem).ZPos)
             {
                 //drawHeatMapFromFile(mLogFileName + ".csv", Convert.ToString(nextZ));
-                mHeatMap.drawPixel(col, row, lValue);
-                mHeatMap.refresh();
+                mHeatMap.addIntensityPixel(col, row, lValue);
+                mHeatMap.updateIntensityKey(IntensityColorKeyGrid);
             }
 
             // Determine the next scan position
@@ -1162,12 +1167,12 @@ namespace REMS
                             if (!lPassed)
                                 lcolor = Colors.Red;
 
-                            mHeatMap.drawPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lValue);
+                            mHeatMap.addIntensityPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lValue);
                         }
                         else if (lFoundData)
                             break;
                     }
-
+                    mHeatMap.updateIntensityKey(IntensityColorKeyGrid);
 
                 }
             }

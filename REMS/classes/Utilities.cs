@@ -114,7 +114,7 @@ namespace REMS.classes
 
     public static class DialogBox
     {
-        public static Boolean save(string aType, string aFileName = "")
+        public static Boolean save(out string aFilePath, string aType, string aFileName = "")
         {
             Microsoft.Win32.SaveFileDialog dlg = new Microsoft.Win32.SaveFileDialog();
             string lFileName = aFileName;
@@ -132,23 +132,20 @@ namespace REMS.classes
                     dlg.Filter = "JPG Files (*.jpg)|*.jpg|JPEG Files (*.jpeg)|*.jpeg";
                     break;
             }
-            
+
             // Show save file dialog box
             Nullable<bool> result = dlg.ShowDialog();
 
             // Process save file dialog box results
-            if (result == true)
-            {
-                // Save document
-                aFileName = dlg.FileName;
-            }
-            else
-                result = false;
+            if (result != true) result = false;
+
+            // Save document
+            aFilePath = dlg.FileName;
 
             return (Boolean)result;
         }
 
-        public static Boolean open(out string aFileName, string aType = "LOG" )
+        public static Boolean open(out string aFilePath, string aType = "LOG")
         {
             // Create OpenFileDialog 
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
@@ -173,8 +170,8 @@ namespace REMS.classes
             // Get the selected file name and display in a TextBox 
             if (result != true) result = false;
 
-            aFileName = dlg.FileName;
-            
+            aFilePath = dlg.FileName;
+
             return (Boolean)result;
         }
     }
@@ -315,7 +312,7 @@ namespace REMS.classes
 
     public static class LogReader
     {
-        public static void openReport(string aFileName, HeatMap aHeatMap, DataGrid aScanLevels)
+        public static void openReport(string aFileName, HeatMap aHeatMap, DataGrid aScanLevels, Grid ColorKey)
         {
             string[] lLine = null;
             ObservableCollection<ScanLevel> lScanLevels = new ObservableCollection<ScanLevel>();
@@ -346,7 +343,7 @@ namespace REMS.classes
                     }
                 }
                 aHeatMap.Clear();
-                aHeatMap.Create(lCols + 1, lRows + 1);
+                aHeatMap.Create(lCols + 1, lRows + 1, ColorKey);
                 aScanLevels.ItemsSource = lScanLevels;
             }
             catch (Exception)

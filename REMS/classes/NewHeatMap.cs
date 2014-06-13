@@ -11,9 +11,11 @@ using System.Windows.Shapes;
 
 namespace REMS.classes
 {
-
-    public class HeatMap : Grid
+    public class NewHeatMap : Grid
     {
+        private Grid mHeatMapGrid = new Grid();
+        private Grid mIntensityKeyGrid = new Grid();
+        private Image mBackGround;
         private int mRows = 0;
         private int mColumns = 0;
         private double mPixelOpacity;
@@ -22,12 +24,20 @@ namespace REMS.classes
         private Boolean mIntensityUpdates = false;
         private List<Pixel> mPixels;
 
-        public HeatMap()
+        public NewHeatMap()
         {
             // constructor
+            ColumnDefinition colDef;
+            colDef = new ColumnDefinition();
+            
+            for (int lCol = 0; lCol < 2; lCol++)
+            {
+                colDef = new ColumnDefinition();
+                mHeatMapGrid.ColumnDefinitions.Insert(mHeatMapGrid.ColumnDefinitions.Count, colDef);
+            }
         }
 
-        public void Create(int Columns, int Rows, Grid ColorKey)
+        public void Create(int Columns, int Rows)
         {
             mRows = Rows;
             mColumns = Columns;
@@ -40,57 +50,34 @@ namespace REMS.classes
             for (int lRow = 0; lRow < mRows; lRow++)
             {
                 rowDef = new RowDefinition();
-                this.RowDefinitions.Insert(this.RowDefinitions.Count, rowDef);
+                mHeatMapGrid.RowDefinitions.Insert(mHeatMapGrid.RowDefinitions.Count, rowDef);
             }
 
             for (int lCol = 0; lCol < mColumns; lCol++)
             {
                 colDef = new ColumnDefinition();
-                this.ColumnDefinitions.Insert(this.ColumnDefinitions.Count, colDef);
-            }
-
-            // Create Grid For intensity Key
-            for (int lCol = 0; lCol < 2; lCol++)
-            {
-                colDef = new ColumnDefinition();
-                ColorKey.ColumnDefinitions.Insert(ColorKey.ColumnDefinitions.Count, colDef);
-            }
-
-            for (int lRow = 0; lRow < 6; lRow++)
-            {
-                rowDef = new RowDefinition();
-                ColorKey.RowDefinitions.Insert(ColorKey.RowDefinitions.Count, rowDef);
-                
-                int lValue = (5 - lRow) * 20;
-                Color lColor = GetColor(0, 100, lValue);
-                Rectangle lPixel = drawPixel(lColor, 1);
-                addToGrid(ColorKey, 0, lRow, lPixel);
-
-                Label lLabel = new Label();
-                lLabel.VerticalAlignment = VerticalAlignment.Center;
-                lLabel.Content = Convert.ToString(lValue);
-                addToGrid(ColorKey, 1, lRow, lLabel);
+                mHeatMapGrid.ColumnDefinitions.Insert(mHeatMapGrid.ColumnDefinitions.Count, colDef);
             }
         }
 
         public void Clear()
         {
-            this.Children.Clear();
-            this.RowDefinitions.Clear();
-            this.ColumnDefinitions.Clear();
+            mHeatMapGrid.Children.Clear();
+            mHeatMapGrid.RowDefinitions.Clear();
+            mHeatMapGrid.ColumnDefinitions.Clear();
         }
 
         public void ClearPixels()
         {
-            this.Children.Clear();
+            mHeatMapGrid.Children.Clear();
 
-            if(mPixels != null)
+            if (mPixels != null)
                 mPixels.Clear();
         }
 
         public Point getClickedCell(object sender, MouseButtonEventArgs e)
         {
-            var point = Mouse.GetPosition(this);
+            var point = Mouse.GetPosition(mHeatMapGrid);
 
             int row = 0;
             int col = 0;
@@ -98,7 +85,7 @@ namespace REMS.classes
             double accumulatedWidth = 0.0;
 
             // calc row mouse was over
-            foreach (var rowDefinition in this.RowDefinitions)
+            foreach (var rowDefinition in mHeatMapGrid.RowDefinitions)
             {
                 accumulatedHeight += rowDefinition.ActualHeight;
                 if (accumulatedHeight >= point.Y)
@@ -107,7 +94,7 @@ namespace REMS.classes
             }
 
             // calc col mouse was over
-            foreach (var columnDefinition in this.ColumnDefinitions)
+            foreach (var columnDefinition in mHeatMapGrid.ColumnDefinitions)
             {
                 accumulatedWidth += columnDefinition.ActualWidth;
                 if (accumulatedWidth >= point.X)
@@ -134,13 +121,13 @@ namespace REMS.classes
             }
         }
 
-        public void addIntensityPixel(int aCol, int aRow, int aValue)
+        public void drawPixel(int aCol, int aRow, int aValue)
         {
             mPixels.Add(new Pixel(aCol, aRow, aValue));
 
             // Set the min and max intensity values to the first
             // pixel value
-            if (this.Children.Count == 0)
+            if (mHeatMapGrid.Children.Count == 0)
             {
                 mIntensityMax = mIntensityMin = aValue;
             }
@@ -158,37 +145,25 @@ namespace REMS.classes
             }
 
             Color lColor = GetColor(mIntensityMin, mIntensityMax, aValue);
-            Rectangle lPixel = drawPixel(lColor, mPixelOpacity);
-            addToGrid(this, aCol, aRow, lPixel); 
+            drawPixel(aCol, aRow, lColor);
 
             // Re-evaluate all of the pixels
             this.refresh();
         }
 
-        public void addThresholdPixel(int aCol, int aRow, Color aColor)
-        {
-            Rectangle lPixel = drawPixel(aColor, mPixelOpacity);
-            addToGrid(this, aCol, aRow, lPixel);
-        }
-
-        private Rectangle drawPixel(Color aColor, Double aFillOpacity)
+        public void drawPixel(int aCol, int aRow, Color aColor)
         {
             Rectangle pixel = new Rectangle();
 
             SolidColorBrush pixelFill = new SolidColorBrush(aColor);
             pixel.Fill = pixelFill;
             pixel.Opacity = 1;
-            pixel.Fill.Opacity = aFillOpacity;
 
-            return pixel;
-        }
+            Grid.SetColumn(pixel, aCol);
+            Grid.SetRow(pixel, aRow);
+            pixel.Fill.Opacity = mPixelOpacity;
 
-        private void addToGrid(Grid aGrid, int aCol, int aRow, UIElement aUIElement)
-        {
-            Grid.SetColumn(aUIElement, aCol);
-            Grid.SetRow(aUIElement, aRow);
-
-            aGrid.Children.Add(aUIElement);
+            mHeatMapGrid.Children.Add(pixel);
         }
 
         private void refresh()
@@ -197,12 +172,11 @@ namespace REMS.classes
             // and minimum intensity values haven't changed
             if (mIntensityUpdates)
             {
-                this.Children.Clear();
-                foreach (Pixel lPixelData in mPixels)
+                mHeatMapGrid.Children.Clear();
+                foreach (Pixel lPixel in mPixels)
                 {
-                    Color lColor = GetColor(mIntensityMin, mIntensityMax, lPixelData.Value);
-                    Rectangle lPixel = drawPixel(lColor, mPixelOpacity);
-                    addToGrid(this, lPixelData.Column, lPixelData.Row, lPixel);
+                    Color lColor = GetColor(mIntensityMin, mIntensityMax, lPixel.Value);
+                    drawPixel(lPixel.Column, lPixel.Row, lColor);
                 }
                 mIntensityUpdates = false;
             }
@@ -231,24 +205,6 @@ namespace REMS.classes
             // R = 0;   G = 0;      B = 255     0
 
             return Color.FromRgb((Byte)red, (Byte)green, (Byte)blue);
-        }
-
-        public void updateIntensityKey(Grid ColorKey)
-        {
-            int lRange = mIntensityMax - mIntensityMin;
-            int lStep = lRange / 5;
-            int lCurrent = mIntensityMax;
-
-            foreach (Object lObj in ColorKey.Children)
-            {
-                if(lObj.GetType().Name == "Label")
-                {
-                    ((Label)lObj).Content = Convert.ToString(lCurrent);
-                    lCurrent -= lStep;
-                }
-            }
-      
-
         }
 
         private class Pixel
@@ -282,5 +238,5 @@ namespace REMS.classes
                 set { _value = value; }
             }
         }
-    }
+    }   
 }

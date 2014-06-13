@@ -188,6 +188,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="150" />
                             <ColumnDefinition Width="5*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <DataGrid Name="dgZScanPoints" 
@@ -221,6 +222,10 @@
                             Background="Transparent"
                             Visibility="Collapsed"
                             Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
+                        
+                        <Grid Name="IntensityColorKeyGrid"
+                              Grid.Column="2"
+                              Width="80"/>
                     </Grid>
                 </TabItem>
 
