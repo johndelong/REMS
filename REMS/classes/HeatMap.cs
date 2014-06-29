@@ -73,11 +73,15 @@ namespace REMS.classes
             }
         }
 
-        public void Clear()
+        public void Clear(Grid aColorKey)
         {
             this.Children.Clear();
             this.RowDefinitions.Clear();
             this.ColumnDefinitions.Clear();
+
+            aColorKey.Children.Clear();
+            aColorKey.RowDefinitions.Clear();
+            aColorKey.ColumnDefinitions.Clear();
         }
 
         public void ClearPixels()

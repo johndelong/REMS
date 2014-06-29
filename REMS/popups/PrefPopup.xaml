@@ -149,7 +149,42 @@
                 </Grid>
                 
             </TabItem>
-                
+
+            <TabItem Header="Motor">
+                <Grid >
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <GroupBox Grid.Row="0" Grid.Column="0" Header="Connnection" HorizontalAlignment="Left">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0" Grid.Column="0" Content="Comm Port:" />
+
+                            <TextBox Name="tbMotorCommPort" Grid.Row="0" Grid.Column="1" Width="60" Margin="3"
+                                     Text="{Binding ElementName=PopupWindow, Path=MotorCommPort, Mode=TwoWay}" />
+
+                            
+                        </Grid>
+                    </GroupBox>
+
+                </Grid>
+
+            </TabItem>
+
 
         </TabControl>
         <Button Name="btnCancel" Content="Cancel" Margin="0,0,9.6,10" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="75" Click="btnCancel_Click" RenderTransformOrigin="1.677,0.491"/>

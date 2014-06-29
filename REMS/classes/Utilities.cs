@@ -342,7 +342,7 @@ namespace REMS.classes
                         }
                     }
                 }
-                aHeatMap.Clear();
+                aHeatMap.Clear(ColorKey);
                 aHeatMap.Create(lCols + 1, lRows + 1, ColorKey);
                 aScanLevels.ItemsSource = lScanLevels;
             }

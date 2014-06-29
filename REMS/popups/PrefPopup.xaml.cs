@@ -34,6 +34,7 @@ namespace REMS.popups
         private string _motorZTravelDistance = Convert.ToString(Properties.Settings.Default.motorZTravelDistance);
         private string _SAMinFrequency = Convert.ToString(Properties.Settings.Default.SAMinFrequency);
         private string _SAMaxFrequency = Convert.ToString(Properties.Settings.Default.SAMaxFrequency);
+        private string _MotorCommPort = Convert.ToString(Properties.Settings.Default.MotorCommPort);
 
         public PrefPopup()
         {
@@ -126,6 +127,15 @@ namespace REMS.popups
             }
         }
 
+        public string MotorCommPort
+        {
+            get { return _MotorCommPort; }
+            set
+            {
+                _MotorCommPort = validateNumericInput(value) ? value : _MotorCommPort;
+            }
+        }
+
         private Boolean validateNumericInput(string input)
         {
             Boolean lResult = false;
@@ -150,6 +160,7 @@ namespace REMS.popups
             Properties.Settings.Default.motorZTravelDistance = Convert.ToDouble(_motorZTravelDistance);
             Properties.Settings.Default.SAMinFrequency = Convert.ToInt32(_SAMinFrequency);
             Properties.Settings.Default.SAMaxFrequency = Convert.ToInt32(_SAMaxFrequency);
+            Properties.Settings.Default.MotorCommPort = Convert.ToInt32(_MotorCommPort);
         }
 
         private void nsPercentageValidator(object sender, ValueChangedEventArgs<int> e)

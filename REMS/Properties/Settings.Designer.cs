@@ -190,5 +190,17 @@ namespace REMS.Properties {
                 this["SAMaxFrequency"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("3")]
+        public int MotorCommPort {
+            get {
+                return ((int)(this["MotorCommPort"]));
+            }
+            set {
+                this["MotorCommPort"] = value;
+            }
+        }
     }
 }
