@@ -14,7 +14,7 @@
                     <MenuItem Header="_New Scan" Name="btnNewScan" Click="click_newScan" />
                     <MenuItem Header="_Open" Name="btnOpen" Click="click_open"/>
                     <!--<MenuItem Header="_Open Log File" Click="click_openLogFile"/>-->
-                    <MenuItem Header="_Close" Name="btnClose"/>
+                    <MenuItem Header="_Close" Name="btnClose" Click="btnClose_Click"/>
                     <MenuItem Header="_Save HeatMap" Name="btnSaveHeatMap" Click="click_saveHeatMapImage" />
                     <MenuItem Header="_Preferences" Name="btnPreferences" Click="click_preferences"/>
                     <MenuItem Header="_Exit"/>

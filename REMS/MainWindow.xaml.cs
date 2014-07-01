@@ -48,13 +48,9 @@ namespace REMS
         private int _SAMinFrequency;
         private int _SAMaxFrequency;
 
-        private Boolean mMotorsConnected = false;
-
         private Boolean mScanFinished = false;
-        //private int motorZTravelDistance = 100;
 
         // Timers
-        //private DispatcherTimer simulatorTimer;
         private CountdownTimer CDTimer;
 
         private readonly BackgroundWorker worker = new BackgroundWorker();
@@ -62,15 +58,14 @@ namespace REMS
 
         private double canvasXStepSize, canvasYStepSize;
 
-        //private double heatMapOpacity;
 
         private int numOfCalibrationPoints = 0;
 
-        //private Boolean imageLoaded = false;
         public Boolean scanAreaSet = false;
-        private Constants.state currentState = Constants.state.Initial;
+        private Constants.state currentState;
         private Constants.state previousState;
-        private Constants.direction currentScanDirection;
+        private Constants.direction currentVerticalScanDirection;
+        private Constants.direction currentHorizontalScanDirection;
 
         private ImageSource mLoadedImage;
 
@@ -81,22 +76,19 @@ namespace REMS
 
         private int xScanPoints = 0;
         private int yScanPoints = 0;
-        //private int[] zScanPoints;
-        //private int numXYPlanes = 0;
         private int totalScanPoints = 0;
 
         private int currentZScanIndex = 0;
 
         // File Names
-        //private string mFileName = "";
         private string mLogFileName;
-        private string mFilePath;
 
         private Boolean mHeatMapPixelClicked = false;
         //private Boolean mRunScan = false;
 
         // Connected Devices
-        ClsVxmDriver Vxm = new ClsVxmDriver();
+
+        private Motor mMotor;
 
         ObservableCollection<ThresholdViewModel> _thresholds;
         ObservableCollection<ScanLevel> _scans;
@@ -115,63 +107,59 @@ namespace REMS
 
             analyzeGrid.ItemsSource = _thresholds;
             analyzeGrid.SelectedIndex = 0;
+            drawThreshold((ThresholdViewModel)analyzeGrid.SelectedItem);
 
-
-            connectMotors();
+            // Load the motor drivers and connect
+            // to the motors
+            mMotor = new Motor();
+            mMotor.connect();
 
             worker.DoWork += worker_DoWork;
             worker.RunWorkerCompleted += worker_RunWorkerCompleted;
             worker.WorkerSupportsCancellation = true;
 
-            transitionToState(Constants.state.Overview);
-
+            transitionToState(Constants.state.Initial);
         }
 
         private void worker_DoWork(object sender, DoWorkEventArgs e)
         {
             // run all background tasks here
-            if (currentState == Constants.state.Overview)
+            if (currentState == Constants.state.Initial)
             {
-                homeMotors();
+                mMotor.home();
             }
             else if (currentState == Constants.state.Scanning)
             {
-                getDataAtCurrentLocation();
-
-                // Determine the next scan location or if we have
-                // finished the entire scan
-                this.Dispatcher.Invoke((Action)(() =>
+                while (!mScanFinished)
                 {
-                    determineNextScanPoint();
-                }));
+                    getDataAtCurrentLocation();
 
-                if(!mScanFinished)
-                    moveMotors(motorXPos, motorYPos, motorZPos);
+                    // Determine the next scan location or if we have
+                    // finished the entire scan
+                    this.Dispatcher.Invoke((Action)(() =>
+                    {
+                        determineNextScanPoint();
+                    }));
+
+                    if (!mScanFinished)
+                        mMotor.move(motorXPos, motorYPos, motorZPos);
+                }
             }
         }
 
         private void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            //update ui once worker complete his work
-            //Console.WriteLine("Homing Complete!");
-            if (currentState == Constants.state.Scanning)
+            if (currentState == Constants.state.Scanning && mScanFinished)
             {
-                worker.RunWorkerAsync();
+                transitionToState(Constants.state.Overview);
 
-                if (mScanFinished)
-                {
-                    transitionToState(Constants.state.Overview);
-
-                    //lFinished = true;
-                    string messageBoxText = "Scan Finished!";
-                    string caption = "Information";
-                    MessageBoxButton button = MessageBoxButton.OK;
-                    MessageBoxImage icon = MessageBoxImage.Information;
-                    MessageBox.Show(messageBoxText, caption, button, icon);
-                }
+                string messageBoxText = "Scan Finished!";
+                string caption = "Information";
+                MessageBoxButton button = MessageBoxButton.OK;
+                MessageBoxImage icon = MessageBoxImage.Information;
+                MessageBox.Show(messageBoxText, caption, button, icon);
             }
         }
-
 
         // select image to set scan area and zoom in on picture
         //http://www.codeproject.com/Articles/148503/Simple-Drag-Selection-in-WPF
@@ -205,21 +193,24 @@ namespace REMS
 
         private void drawThreshold(ThresholdViewModel aThreshold)
         {
-            Point[] lThresholdLine = new Point[aThreshold.Limits.Count * 2 - 1];
-            int freq = Convert.ToInt32(aThreshold.Limits[0].Frequency);
-            int amp = Convert.ToInt32(aThreshold.Limits[0].Amplitude);
-            int pos = 0;
-            for (int i = 1; i < aThreshold.Limits.Count * 2; i++)
+            if (aThreshold != null)
             {
-                if (i % 2 == 0)
-                    freq = Convert.ToInt32(aThreshold.Limits[i / 2].Frequency);
-                else
-                    amp = Convert.ToInt32(aThreshold.Limits[i / 2].Amplitude);
+                Point[] lThresholdLine = new Point[aThreshold.Limits.Count * 2 - 1];
+                int freq = Convert.ToInt32(aThreshold.Limits[0].Frequency);
+                int amp = Convert.ToInt32(aThreshold.Limits[0].Amplitude);
+                int pos = 0;
+                for (int i = 1; i < aThreshold.Limits.Count * 2; i++)
+                {
+                    if (i % 2 == 0)
+                        freq = Convert.ToInt32(aThreshold.Limits[i / 2].Frequency);
+                    else
+                        amp = Convert.ToInt32(aThreshold.Limits[i / 2].Amplitude);
 
-                lThresholdLine[pos] = new Point(freq, amp);
-                pos++;
+                    lThresholdLine[pos] = new Point(freq, amp);
+                    pos++;
+                }
+                graph1.Data[0] = lThresholdLine;
             }
-            graph1.Data[0] = lThresholdLine;
         }
 
         private void transitionToState(Constants.state aState)
@@ -246,7 +237,8 @@ namespace REMS
 
                     btnCaptureImage.IsEnabled = true;
 
-                    currentScanDirection = Constants.direction.South;
+                    currentVerticalScanDirection = Constants.direction.South;
+                    currentHorizontalScanDirection = Constants.direction.East;
                     dgZScanPoints.ItemsSource = null;
 
                     if (previousState == Constants.state.Overview)
@@ -623,22 +615,22 @@ namespace REMS
         private void motorJogUp_Click(object sender, RoutedEventArgs e)
         {
             //Vxm.DriverTerminalShowState(1, 0);
-            Vxm.PortOpen(1, 9600);
-            Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
-            Vxm.PortClose();
+            //Vxm.PortOpen(1, 9600);
+            //Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
+            //Vxm.PortClose();
             //Vxm.DriverTerminalShowState(0, 0);
         }
 
         private void motorJogDown_Click(object sender, RoutedEventArgs e)
         {
-            int status = 0;
+            //int status = 0;
 
-            status = Vxm.PortOpen(3, 9600);
-            Console.WriteLine("Connection to Motor: " + (status == 1 ? "Success" : "Failed"));
+            //status = Vxm.PortOpen(3, 9600);
+            //Console.WriteLine("Connection to Motor: " + (status == 1 ? "Success" : "Failed"));
 
-            Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
-            Vxm.PortWaitForChar("^", 0);
-            Vxm.PortClose();
+            //Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
+            //Vxm.PortWaitForChar("^", 0);
+            //Vxm.PortClose();
         }
 
         private void motorJogLeft_Click(object sender, RoutedEventArgs e)
@@ -649,69 +641,6 @@ namespace REMS
         private void motorJogRight_Click(object sender, RoutedEventArgs e)
         {
 
-        }
-
-        private void connectMotors()
-        {
-            int lStatus = 0;
-
-            lStatus = Vxm.LoadDriver("VxmDriver.dll");
-            //Console.WriteLine("Loading Motor Driver: " + (lStatus == 1 ? "Success" : "Failed"));
-
-            lStatus = Vxm.PortOpen(Properties.Settings.Default.MotorCommPort, 9600);
-            Console.WriteLine("Connecting to Motors: " + (lStatus == 1 ? "Success" : "Failed"));
-
-            if (lStatus == 1)
-            {
-                mMotorsConnected = true;
-            }
-        }
-
-        private void disconnectMotors()
-        {
-            //int lStatus = 0;
-
-            Vxm.PortClose();
-            //Console.WriteLine("Disconnecting Motors: " + (lStatus == 1 ? "Success" : "Failed"));
-
-            mMotorsConnected = false;
-
-            Vxm.ReleaseDriver();
-            //Console.WriteLine("Relase Motor Driver: " + (lStatus == 1 ? "Success" : "Failed"));
-        }
-
-        private void moveMotors(int aXPos, int aYPos, int aZPos)
-        {
-            if (mMotorsConnected)
-            {
-                // Since our motor step size is 0.005mm, we have to
-                // multiply our steps by 200
-                string lXPos = Convert.ToString(aXPos * 200);
-                string lYPos = Convert.ToString(aYPos * 200);
-                string lZPos = Convert.ToString(aZPos * 200);
-
-                int lStatus = 0;
-                String lCommand = "F,C,(,IA1M" + lXPos + ",IA2M" + lYPos + ",),R";
-                lStatus = Vxm.PortSendCommands(lCommand);
-                Console.WriteLine("Moving Motors: " + (lStatus == 1 ? "Success" : "Failed"));
-
-                Vxm.PortWaitForChar("^", 0);
-            }
-        }
-
-        private void homeMotors()
-        {
-            if (mMotorsConnected)
-            {
-                int lStatus = 0;
-                lStatus = Vxm.PortSendCommands("F,C,(,I1M-0,I2M-0,),R");
-                Console.WriteLine("Homing Motors: " + (lStatus == 1 ? "Success" : "Failed"));
-                Vxm.PortWaitForChar("^", 0);
-
-                lStatus = Vxm.PortSendCommands("N");
-                Console.WriteLine("Update Home Position: " + (lStatus == 1 ? "Success" : "Failed"));
-                Vxm.PortWaitForChar("^", 0);
-            }
         }
 
         private void dataGridThreshold_MouseUp(object sender, MouseButtonEventArgs e)
@@ -965,7 +894,6 @@ namespace REMS
             lblZPosition.Text = motorZPos.ToString();
         }
 
-
         /// <summary>
         /// Saves all of the application settings for furture use when application closes
         /// </summary>
@@ -974,13 +902,12 @@ namespace REMS
         private void onClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             //srLog.Close(); // close stream to log file
-            disconnectMotors();
+            //disconnectMotors
+            mMotor.disconnect();
 
             // Save User Preferences
             saveUserPreferences();
         }
-
-
 
 
         /**
@@ -1014,39 +941,43 @@ namespace REMS
             double currFreq = _SAMinFrequency;
 
             ThresholdViewModel lThreshold = mSelectedThreshold;
-            lMinDifference = Convert.ToInt32(lThreshold.Limits[0].Amplitude);
-            foreach (int lreading in data) // number of data points collected
+            if (lThreshold != null)
             {
-                ThresholdLimitViewModel prevLimit = null;
-                foreach (ThresholdLimitViewModel lLimit in lThreshold.Limits) // limits within this threshold
+                lMinDifference = Convert.ToInt32(lThreshold.Limits[0].Amplitude);
+                foreach (int lreading in data) // number of data points collected
                 {
-                    if (prevLimit == null)
-                        prevLimit = lLimit;
-
-                    if (currFreq > Convert.ToInt32(lLimit.Frequency))
+                    ThresholdLimitViewModel prevLimit = null;
+                    foreach (ThresholdLimitViewModel lLimit in lThreshold.Limits) // limits within this threshold
                     {
-                        prevLimit = lLimit;
-                        continue;
+                        if (prevLimit == null)
+                            prevLimit = lLimit;
+
+                        if (currFreq > Convert.ToInt32(lLimit.Frequency))
+                        {
+                            prevLimit = lLimit;
+                            continue;
+                        }
+
+                        // If we have gotten this far, we know we are comparing 
+                        //the data to the right threshold
+                        if (Convert.ToInt32(prevLimit.Amplitude) - lreading < lMinDifference)
+                        {
+                            lMinDifference = Convert.ToInt32(prevLimit.Amplitude) - lreading;
+                            Value = lMinDifference * (-1);
+                        }
+
+                        if (lreading > Convert.ToInt32(prevLimit.Amplitude))
+                        {
+                            lThreshold.State = "Failed";
+                            Passed = false;
+                            break;
+                        }
                     }
 
-                    // If we have gotten this far, we know we are comparing 
-                    //the data to the right threshold
-                    if (Convert.ToInt32(prevLimit.Amplitude) - lreading < lMinDifference)
-                    {
-                        lMinDifference = Convert.ToInt32(prevLimit.Amplitude) - lreading;
-                        Value = lMinDifference * (-1);
-                    }
-
-                    if (lreading > Convert.ToInt32(prevLimit.Amplitude))
-                    {
-                        lThreshold.State = "Failed";
-                        Passed = false;
-                        break;
-                    }
+                    currFreq += stepSize;
                 }
-
-                currFreq += stepSize;
             }
+            
         }
 
         private void getDataAtCurrentLocation()
@@ -1100,35 +1031,21 @@ namespace REMS
             lblZPosition.Text = nextZ.ToString();
 
             // Determine the next scan position
-            if (currentScanDirection == Constants.direction.South)
+             
+            nextY += (currentVerticalScanDirection == Constants.direction.South) ? nsYStepSize.Value : -nsYStepSize.Value;
+
+            if (nextY > motorScanAreaPoints[1].Y || nextY < motorScanAreaPoints[0].Y)
             {
-                nextY = nextY + nsYStepSize.Value;
-                if (nextY > motorScanAreaPoints[1].Y)
-                {
-                    currentScanDirection = Utilities.reverseDirection(currentScanDirection);
-                    nextY = nextY - nsYStepSize.Value;
-                    nextX = nextX + nsXStepSize.Value;
-                }
-            }
-            else if (currentScanDirection == Constants.direction.North)
-            {
-                nextY = nextY - nsYStepSize.Value;
-                if (nextY < motorScanAreaPoints[0].Y)
-                {
-                    currentScanDirection = Utilities.reverseDirection(currentScanDirection);
-                    nextY = nextY + nsYStepSize.Value;
-                    nextX = nextX + nsXStepSize.Value;
-                }
+                currentVerticalScanDirection = Utilities.reverseDirection(currentVerticalScanDirection);
+                nextX += (currentHorizontalScanDirection == Constants.direction.East) ? nsXStepSize.Value : -nsXStepSize.Value;
             }
 
-            if (nextX > motorScanAreaPoints[1].X)
+            if (nextX > motorScanAreaPoints[1].X || nextX < motorScanAreaPoints[0].X)
             {
                 _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "Complete";
 
                 if (nextZ == nsZMax.Value)
                 {
-                    //simulatorTimer.Stop();
-                    //mRunScan = false;
                     mScanFinished = true;
                 }
                 else
@@ -1137,12 +1054,21 @@ namespace REMS
 
                     currentZScanIndex++;
 
-                    // Put the motors back to their starting positions
-                    nextX = Convert.ToInt32(motorScanAreaPoints[0].X);
-                    nextY = Convert.ToInt32(motorScanAreaPoints[0].Y);
-                    currentScanDirection = Constants.direction.South;
+                    currentHorizontalScanDirection = Utilities.reverseDirection(currentHorizontalScanDirection);
                 }
             }
+
+            // Make sure nextY stays in bounds
+            if (nextY > motorScanAreaPoints[1].Y)
+                nextY += -nsYStepSize.Value;
+            else if (nextY < motorScanAreaPoints[0].Y)
+                nextY += nsYStepSize.Value;
+
+            // Make sure nextX stays in bounds
+            if (nextX > motorScanAreaPoints[1].X)
+                nextX += -nsXStepSize.Value;
+            else if (nextX < motorScanAreaPoints[0].X)
+                nextX += nsXStepSize.Value;
 
             motorXPos = nextX;
             motorYPos = nextY;
@@ -1283,11 +1209,7 @@ namespace REMS
                                 catch (Exception) { };
                             }
 
-                            analyzeScannedData(lData, out lPassed, out lValue);
-                            Console.WriteLine(lLine[0] + " " + lLine[1] + " " + lPassed);
-                            Color lcolor = Colors.Blue;
-                            if (!lPassed)
-                                lcolor = Colors.Red;
+                            analyzeScannedData(lData, out lPassed, out lValue);                            
 
                             mHeatMap.addIntensityPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lValue);
                         }
@@ -1320,6 +1242,11 @@ namespace REMS
                 mSelectedThreshold = ((ThresholdViewModel)analyzeGrid.SelectedItem);
 
             }
+        }
+
+        private void btnClose_Click(object sender, RoutedEventArgs e)
+        {
+            transitionToState(Constants.state.Initial);
         }
     }
 }

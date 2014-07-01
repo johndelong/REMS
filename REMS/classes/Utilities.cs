@@ -423,7 +423,7 @@ namespace REMS.classes
                 Matrix.Add(values.ToList());
             }
 
-            Console.WriteLine("Here it comes!");
+            //Console.WriteLine("Here it comes!");
             //Console.WriteLine(Matrix[1][1]);
 
             foreach (var row in Matrix)
@@ -455,51 +455,147 @@ namespace REMS.classes
         }*/
     }
 
+    public class Motor
+    {
+        private Boolean _connected = false;
+        private ClsVxmDriver Vxm;
+
+        public Motor()
+        {
+            Vxm = new ClsVxmDriver();
+        }
+
+        public Boolean connected
+        {
+            get { return _connected; }
+            set { _connected = value; }
+        }
+
+        public void connect()
+        {
+            int lStatus = 0;
+
+            lStatus = Vxm.LoadDriver("VxmDriver.dll");
+            //Console.WriteLine("Loading Motor Driver: " + (lStatus == 1 ? "Success" : "Failed"));
+
+            //lStatus = Vxm.PortOpen(Properties.Settings.Default.MotorCommPort, 9600);
+            //Console.WriteLine("Connecting to Motors: " + (lStatus == 1 ? "Success" : "Failed"));
+
+            if (lStatus == 1)
+            {
+                _connected = true;
+            }
+        }
+
+        public void disconnect()
+        {
+            Vxm.PortClose();
+
+            _connected = false;
+
+            Vxm.ReleaseDriver();
+        } 
+
+        public void move(int aXPos, int aYPos, int aZPos)
+        {
+            if (_connected)
+            {
+                // Since our motor step size is 0.005mm, we have to
+                // multiply our steps by 200
+                string lXPos = Convert.ToString(aXPos * 200);
+                string lYPos = Convert.ToString(aYPos * 200);
+                string lZPos = Convert.ToString(aZPos * 200);
+
+                int lStatus = 0;
+                String lCommand = "F,C,(,IA1M" + lXPos + ",IA2M" + lYPos + ",),R";
+                lStatus = Vxm.PortSendCommands(lCommand);
+                Console.WriteLine("Moving Motors: " + (lStatus == 1 ? "Success" : "Failed"));
+
+                Vxm.PortWaitForChar("^", 0);
+            }
+        }
+
+        public void home()
+        {
+            if (_connected)
+            {
+                int lStatus = 0;
+                lStatus = Vxm.PortSendCommands("F,C,(,I1M-0,I2M-0,),R");
+                Console.WriteLine("Homing Motors: " + (lStatus == 1 ? "Success" : "Failed"));
+                Vxm.PortWaitForChar("^", 0);
+
+                lStatus = Vxm.PortSendCommands("N");
+                Console.WriteLine("Update Home Position: " + (lStatus == 1 ? "Success" : "Failed"));
+                Vxm.PortWaitForChar("^", 0);
+            }
+        }
+    }
+
     public static class ExternalData
     {
         public static ObservableCollection<ThresholdViewModel> GetThresholds()
         {
             ObservableCollection<ThresholdViewModel> lThresholds = new ObservableCollection<ThresholdViewModel>();
-
-            using (StreamReader sr = new StreamReader("Thresholds.csv"))
+            
+            try
             {
-                string line;
-
-                while ((line = sr.ReadLine()) != null)
+                if (!File.Exists("Thresholds.csv"))
                 {
-                    Console.WriteLine(line);
-                    string[] lPairs = line.Split(',');
-                    ThresholdViewModel lThreshold = new ThresholdViewModel();
-                    lThreshold.Name = lPairs[0];
-
-                    for (int i = 1; i < lPairs.Length; i++)
-                    {
-                        string[] lTemp = lPairs[i].Split('|');
-                        lThreshold.Limits.Add(new ThresholdLimitViewModel(lTemp[0], lTemp[1]));
-                    }
-
-                    lThresholds.Add(lThreshold);
+                    File.Create("Thresholds.csv");
                 }
+
+                using (StreamReader sr = new StreamReader("Thresholds.csv"))
+                {
+                    string line;
+
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        //Console.WriteLine(line);
+                        string[] lPairs = line.Split(',');
+                        ThresholdViewModel lThreshold = new ThresholdViewModel();
+                        lThreshold.Name = lPairs[0];
+
+                        for (int i = 1; i < lPairs.Length; i++)
+                        {
+                            string[] lTemp = lPairs[i].Split('|');
+                            lThreshold.Limits.Add(new ThresholdLimitViewModel(lTemp[0], lTemp[1]));
+                        }
+
+                        lThresholds.Add(lThreshold);
+                    }
+                }
+                
             }
+            catch (Exception) { }
 
             return lThresholds;
         }
 
         public static void SaveThresholds(ObservableCollection<ThresholdViewModel> aThresholds)
         {
-            using (StreamWriter sw = new StreamWriter("Thresholds.csv"))
+            try
             {
-                foreach (ThresholdViewModel lThreshold in aThresholds)
+                if (!File.Exists("Thresholds.csv"))
                 {
-                    sw.Write(lThreshold.Name);
-                    foreach (ThresholdLimitViewModel lLimits in lThreshold.Limits)
-                    {
-                        sw.Write(",");
-                        sw.Write(lLimits.Frequency + "|" + lLimits.Amplitude);
-                    }
-                    sw.Write("\r\n");
+                    File.Create("Thresholds.csv");
                 }
+
+                using (StreamWriter sw = new StreamWriter("Thresholds.csv"))
+                {
+                    foreach (ThresholdViewModel lThreshold in aThresholds)
+                    {
+                        sw.Write(lThreshold.Name);
+                        foreach (ThresholdLimitViewModel lLimits in lThreshold.Limits)
+                        {
+                            sw.Write(",");
+                            sw.Write(lLimits.Frequency + "|" + lLimits.Amplitude);
+                        }
+                        sw.Write("\r\n");
+                    }
+                }
+
             }
+            catch (Exception) { }
         }
     }
 
@@ -517,21 +613,25 @@ namespace REMS.classes
         /// <param name="aDashedLine"></param>
         public static void Rectangle(Canvas aDrawingCanvas, double aX, double aY, double aWidth, double aHeight, Brush aColor, Boolean aDashedLine = false)
         {
-            Shape Rendershape = new Rectangle();
-            Rendershape.Stroke = aColor;
-            Rendershape.StrokeThickness = 3;
-
-            if (aDashedLine)
+            try
             {
-                Rendershape.StrokeDashArray = new DoubleCollection() { 2, 1 };
+                Shape Rendershape = new Rectangle();
+                Rendershape.Stroke = aColor;
+                Rendershape.StrokeThickness = 3;
+
+                if (aDashedLine)
+                {
+                    Rendershape.StrokeDashArray = new DoubleCollection() { 2, 1 };
+                }
+
+                Canvas.SetLeft(Rendershape, aX);
+                Canvas.SetTop(Rendershape, aY);
+                Rendershape.Height = aHeight;
+                Rendershape.Width = aWidth;
+
+                aDrawingCanvas.Children.Add(Rendershape);
             }
-
-            Canvas.SetLeft(Rendershape, aX);
-            Canvas.SetTop(Rendershape, aY);
-            Rendershape.Height = aHeight;
-            Rendershape.Width = aWidth;
-
-            aDrawingCanvas.Children.Add(Rendershape);
+            catch (Exception) { }
         }
 
         /// <summary>
