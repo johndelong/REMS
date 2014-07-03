@@ -3,9 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ni="http://schemas.ni.com/controls/2009/xaml/presentation" 
         xmlns:p="clr-namespace:REMS.Properties"
-        Title="MainWindow" Height="600" MinHeight="600" Width="800" MinWidth="800"
-        Closing="onClosing" Name="REMSWindow"
-        >
+        Title="Radiative Emissions Measuring System" Height="600" MinHeight="600" Width="800" MinWidth="800"
+        Closing="onClosing" Name="REMSWindow">
     
     <Grid>
         <DockPanel >
@@ -232,7 +231,7 @@
                 <TabItem Header="Analyze" Name="AnalyzeTab">
                     <Grid>
 
-                        <DataGrid Name="analyzeGrid" Width="150" Margin="10,10,0,10"
+                        <DataGrid Name="dgThresholds" Width="150" Margin="10,10,0,10"
                                   HorizontalAlignment="Left" AutoGenerateColumns="false"
                                   IsReadOnly="True" RowHeaderWidth="0"
                                   SelectedCellsChanged="analyzeGrid_SelectedCellsChanged">

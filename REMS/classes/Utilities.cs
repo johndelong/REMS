@@ -110,6 +110,54 @@ namespace REMS.classes
             corners[1] = bottomRight;
             return corners;
         }
+
+        public static void analyzeScannedData(int[] aCollectedData, double aMinFreq, double aMaxFreq, ThresholdViewModel aThreshold,
+            out Boolean aPassed, out int aValue)
+        {
+            aPassed = true; // Default to Passed;
+            aValue = 0;
+
+            int lMinDifference;
+            double lStepSize = (aMaxFreq - aMinFreq) / aCollectedData.Count();
+            double lCurrFreq = aMinFreq;
+
+            if (aThreshold != null)
+            {
+                lMinDifference = Convert.ToInt32(aThreshold.Limits[0].Amplitude);
+                foreach (int lAmplitude in aCollectedData) // number of data points collected
+                {
+                    ThresholdLimitViewModel prevLimit = null;
+                    foreach (ThresholdLimitViewModel lLimit in aThreshold.Limits) // limits within this threshold
+                    {
+                        if (prevLimit == null)
+                            prevLimit = lLimit;
+
+                        if (lCurrFreq > Convert.ToInt32(lLimit.Frequency))
+                        {
+                            prevLimit = lLimit;
+                            continue;
+                        }
+
+                        // If we have gotten this far, we know we are comparing 
+                        //the data to the right threshold
+                        if (Convert.ToInt32(prevLimit.Amplitude) - lAmplitude < lMinDifference)
+                        {
+                            lMinDifference = Convert.ToInt32(prevLimit.Amplitude) - lAmplitude;
+                            aValue = lMinDifference * (-1);
+                        }
+
+                        if (lAmplitude > Convert.ToInt32(prevLimit.Amplitude))
+                        {
+                            aThreshold.State = "Failed";
+                            aPassed = false;
+                            break;
+                        }
+                    }
+
+                    lCurrFreq += lStepSize;
+                }
+            }
+        }
     }
 
     public static class DialogBox
@@ -478,13 +526,16 @@ namespace REMS.classes
             lStatus = Vxm.LoadDriver("VxmDriver.dll");
             //Console.WriteLine("Loading Motor Driver: " + (lStatus == 1 ? "Success" : "Failed"));
 
-            //lStatus = Vxm.PortOpen(Properties.Settings.Default.MotorCommPort, 9600);
-            //Console.WriteLine("Connecting to Motors: " + (lStatus == 1 ? "Success" : "Failed"));
+            lStatus = Vxm.PortOpen(Properties.Settings.Default.MotorCommPort, 9600);
+            Console.WriteLine("Connecting to Motors: " + (lStatus == 1 ? "Success" : "Failed"));
 
             if (lStatus == 1)
             {
                 _connected = true;
             }
+
+            lStatus = Vxm.PortSendCommands("F,C,S1M4000,S2M4000,R");
+            Console.WriteLine("Speed of motors set to 4000 steps per second (20mm/s): " + (lStatus == 1 ? "Success" : "Failed"));
         }
 
         public void disconnect()
@@ -533,18 +584,18 @@ namespace REMS.classes
 
     public static class ExternalData
     {
-        public static ObservableCollection<ThresholdViewModel> GetThresholds()
+        public static ObservableCollection<ThresholdViewModel> GetThresholds(String aFile = "Thresholds.csv")
         {
             ObservableCollection<ThresholdViewModel> lThresholds = new ObservableCollection<ThresholdViewModel>();
             
             try
             {
-                if (!File.Exists("Thresholds.csv"))
+                if (!File.Exists(aFile))
                 {
-                    File.Create("Thresholds.csv");
+                    File.Create(aFile);
                 }
 
-                using (StreamReader sr = new StreamReader("Thresholds.csv"))
+                using (StreamReader sr = new StreamReader(aFile))
                 {
                     string line;
 
@@ -571,16 +622,16 @@ namespace REMS.classes
             return lThresholds;
         }
 
-        public static void SaveThresholds(ObservableCollection<ThresholdViewModel> aThresholds)
+        public static void SaveThresholds(ObservableCollection<ThresholdViewModel> aThresholds, String aFile = "Thresholds.csv")
         {
             try
             {
-                if (!File.Exists("Thresholds.csv"))
+                if (!File.Exists(aFile))
                 {
-                    File.Create("Thresholds.csv");
+                    File.Create(aFile);
                 }
 
-                using (StreamWriter sw = new StreamWriter("Thresholds.csv"))
+                using (StreamWriter sw = new StreamWriter(aFile))
                 {
                     foreach (ThresholdViewModel lThreshold in aThresholds)
                     {

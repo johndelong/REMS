@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -32,69 +33,55 @@ namespace REMS
     /// </summary>
     public partial class MainWindow : Window //maybe should try 'implement' REMSProperties
     {
-
         // Calibration Variables
-        private Point[] imageCalibrationPoints = new Point[2]; // where actually on the image is the calibration points
-        private Point[] canvasCalibrationPoints = new Point[2]; // which calibration points have been collected
-        private Boolean mCalibrationSet = false;
+        private Point[] mImageCalibrationPoints = new Point[2]; // where actually on the image is the calibration points
+        private Point[] mCanvasCalibrationPoints = new Point[2]; // where the user clicked on the canvas
+        //private Boolean mCalibrationSet = false;
+        private int mCalibrationPoints = 0;
 
-        private Point[] canvasScanArea = new Point[2];
-        private Point[] motorScanAreaPoints = new Point[2]; // the bounds for the motor to travel
+        // Scan area variables
+        private Point[] mCanvasScanArea = new Point[2]; // the selected are to scan selected by the user
+        private Point[] mMotorScanAreaPoints = new Point[2]; // the bounds for the motor to travel
+        private Boolean mScanAreaIsSet = false;
+        private int motorXPos, motorYPos, motorZPos;
+        private int mXScanPoints, mYScanPoints = 0;
+        private int mTotalScanPoints = 0;
+        
+        // Saved Setting Variables
+        private double mMotorXTravelDistance;
+        private double mMotorYTravelDistance;
+        private double mMotorZTravelDistance;
+        private int mSAMinFrequency;
+        private int mSAMaxFrequency;
 
-        public double motorXTravelDistance;
-        public double motorYTravelDistance;
-        public double motorZTravelDistance;
-
-        private int _SAMinFrequency;
-        private int _SAMaxFrequency;
-
-        private Boolean mScanFinished = false;
-
-        // Timers
-        private CountdownTimer CDTimer;
-
+        // Tread to control the 3rd party devices
         private readonly BackgroundWorker worker = new BackgroundWorker();
 
-
-        private double canvasXStepSize, canvasYStepSize;
-
-
-        private int numOfCalibrationPoints = 0;
-
-        public Boolean scanAreaSet = false;
-        private Constants.state currentState;
-        private Constants.state previousState;
-        private Constants.direction currentVerticalScanDirection;
-        private Constants.direction currentHorizontalScanDirection;
-
-        private ImageSource mLoadedImage;
-
-        bool mouseDown = false; // Set to 'true' when mouse is held down.
-        Point canvasMouseDownPos; // The point where the mouse button was clicked down on the image.
-        Point canvasMouseUpPos;
-        int motorXPos, motorYPos, motorZPos;
-
-        private int xScanPoints = 0;
-        private int yScanPoints = 0;
-        private int totalScanPoints = 0;
-
-        private int currentZScanIndex = 0;
-
+        // Mouse variables
+        private bool mMouseDown = false; // Set to 'true' when mouse is held down.
+        private Point mCanvasMouseDownPos; // The point where the mouse button was clicked down on the image.
+        private Point mCanvasMouseUpPos; // the point where the mouse button was released on the image
+        
         // File Names
         private string mLogFileName;
 
-        private Boolean mHeatMapPixelClicked = false;
-        //private Boolean mRunScan = false;
-
         // Connected Devices
-
         private Motor mMotor;
 
-        ObservableCollection<ThresholdViewModel> _thresholds;
-        ObservableCollection<ScanLevel> _scans;
+        // Binded Variables
+        private ObservableCollection<ThresholdViewModel> mThresholds;
+        private ObservableCollection<ScanLevel> mScans = new ObservableCollection<ScanLevel>();
+        private ThresholdViewModel mSelectedThreshold;
+        private ScanLevel mSelectedScanPoint;
 
-        ThresholdViewModel mSelectedThreshold;
-        ScanLevel mSelectedScanPoint;
+        // Others
+        private Constants.state mCurrentState, mPreviousState;
+        private Constants.direction mVerticalScanDirection, mHorizontalScanDirection;
+        private Boolean mScanFinished = false;
+        private CountdownTimer mCDTimer;
+        private ImageSource mLoadedImage;
+        private int mCurrentZScanIndex = 0; // Index for the Z scan level that is selected
+        private Boolean mHeatMapPixelClicked = false;
 
         public MainWindow()
         {
@@ -102,36 +89,43 @@ namespace REMS
 
             loadUserPreferences();
 
-            _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
-            _scans = new ObservableCollection<ScanLevel>();
+            // Populate the treshold table from file
+            mThresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
+            dgThresholds.ItemsSource = mThresholds;
+            dgThresholds.SelectedIndex = 0;
+            drawThreshold((ThresholdViewModel)dgThresholds.SelectedItem);
 
-            analyzeGrid.ItemsSource = _thresholds;
-            analyzeGrid.SelectedIndex = 0;
-            drawThreshold((ThresholdViewModel)analyzeGrid.SelectedItem);
-
-            // Load the motor drivers and connect
-            // to the motors
-            mMotor = new Motor();
-            mMotor.connect();
-
+            // Setup our worker to move the motors and collect data
             worker.DoWork += worker_DoWork;
             worker.RunWorkerCompleted += worker_RunWorkerCompleted;
             worker.WorkerSupportsCancellation = true;
 
-            transitionToState(Constants.state.Initial);
+            // Load the motor drivers and connect to the motors
+            mMotor = new Motor();
+            mMotor.connect();
+
+            // Start at the initial state
+            transitionToState(Constants.state.Overview);
         }
 
         private void worker_DoWork(object sender, DoWorkEventArgs e)
         {
+            BackgroundWorker wk = sender as BackgroundWorker;
+
             // run all background tasks here
-            if (currentState == Constants.state.Initial)
+            if (mCurrentState == Constants.state.Initial)
             {
                 mMotor.home();
             }
-            else if (currentState == Constants.state.Scanning)
+            else if (mCurrentState == Constants.state.Scanning)
             {
                 while (!mScanFinished)
                 {
+                    if (wk.CancellationPending)
+                    {
+                        break;
+                    }
+
                     getDataAtCurrentLocation();
 
                     // Determine the next scan location or if we have
@@ -149,7 +143,7 @@ namespace REMS
 
         private void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (currentState == Constants.state.Scanning && mScanFinished)
+            if (mCurrentState == Constants.state.Scanning && mScanFinished)
             {
                 transitionToState(Constants.state.Overview);
 
@@ -171,8 +165,8 @@ namespace REMS
             if (lLine != null)
             {
                 int numberOfPoints = lLine.Length - 3;
-                double stepSize = (double)(_SAMaxFrequency - _SAMinFrequency) / (numberOfPoints);
-                double currFreq = _SAMinFrequency;
+                double stepSize = (double)(mSAMaxFrequency - mSAMinFrequency) / (numberOfPoints);
+                double currFreq = mSAMinFrequency;
 
                 Point[] data = new Point[numberOfPoints];
 
@@ -215,8 +209,8 @@ namespace REMS
 
         private void transitionToState(Constants.state aState)
         {
-            previousState = currentState;
-            currentState = aState;
+            mPreviousState = mCurrentState;
+            mCurrentState = aState;
 
             switch (aState)
             {
@@ -237,11 +231,11 @@ namespace REMS
 
                     btnCaptureImage.IsEnabled = true;
 
-                    currentVerticalScanDirection = Constants.direction.South;
-                    currentHorizontalScanDirection = Constants.direction.East;
+                    mVerticalScanDirection = Constants.direction.South;
+                    mHorizontalScanDirection = Constants.direction.East;
                     dgZScanPoints.ItemsSource = null;
 
-                    if (previousState == Constants.state.Overview)
+                    if (mPreviousState == Constants.state.Overview)
                     {
                         // Remmove captured image and heat map
                         mLoadedImage = null;
@@ -259,7 +253,7 @@ namespace REMS
                     imageCaptured.Source = mLoadedImage;
 
                     // Redraw the table area on the image after calibration
-                    redrawSelectionObjects();
+                   redrawSelectionObjects();
 
                     // Only show the canvas if we have an image loaded
                     if (imageCaptured.Source == null)
@@ -279,16 +273,16 @@ namespace REMS
                     lblStatus.Text = Constants.StatusCalibration1;
 
                     // Reset the number of calibration points clicked
-                    numOfCalibrationPoints = 0;
+                    mCalibrationPoints = 0;
 
                     // Delete everything in the selectorCanvas
                     canvasDrawing.Children.Clear();
 
-                    if (mCalibrationSet)
-                    {
+                    //if (mCalibrationSet)
+                    //{
                         // Draw the table area
                         drawMotorTravelArea();
-                    }
+                    //}
                     break;
 
                 case Constants.state.Ready:
@@ -361,7 +355,7 @@ namespace REMS
                     //mRunScan = false;
 
                     // Stop the count down timer
-                    CDTimer.Stop();
+                    mCDTimer.Stop();
 
                     break;
 
@@ -427,21 +421,21 @@ namespace REMS
         /// <param name="e"></param>
         private void click_cancel(object sender, RoutedEventArgs e)
         {
-            if (currentState == Constants.state.Calibration)
+            if (mCurrentState == Constants.state.Calibration)
             {
                 transitionToState(Constants.state.Initial);
             }
-            else if (currentState == Constants.state.Ready)
+            else if (mCurrentState == Constants.state.Ready)
             {
                 transitionToState(Constants.state.Initial);
             }
-            else if (currentState == Constants.state.Scanning)
+            else if (mCurrentState == Constants.state.Scanning)
             {
                 transitionToState(Constants.state.Stopped);
             }
-            else if (currentState == Constants.state.Stopped)
+            else if (mCurrentState == Constants.state.Stopped)
             {
-                transitionToState(Constants.state.Initial);
+                transitionToState(Constants.state.Overview);
             }
         }
 
@@ -452,32 +446,34 @@ namespace REMS
         /// <param name="e"></param>
         private void click_accept(object sender, RoutedEventArgs e)
         {
-            if (currentState == Constants.state.Initial && scanAreaSet)
+            if (mCurrentState == Constants.state.Initial && mScanAreaIsSet)
             {
                 transitionToState(Constants.state.Ready);
             }
-            else if (currentState == Constants.state.Ready)
+            else if (mCurrentState == Constants.state.Ready)
             {
                 // Save the image to be referenced later
                 Imaging.SaveToJPG((BitmapSource)imageCaptured.Source, mLogFileName + ".jpg");
 
                 transitionToState(Constants.state.Scanning);
             }
-            else if (currentState == Constants.state.Stopped)
+            else if (mCurrentState == Constants.state.Stopped)
             {
                 transitionToState(Constants.state.Scanning);
             }
-            else if (currentState == Constants.state.Calibration)
+            else if (mCurrentState == Constants.state.Calibration)
             {
                 // Only want to save our calibration values if the user clicks
                 // the 'Accept' button in the calibration state
-                canvasCalibrationPoints = Utilities.determineOpositeCorners(canvasCalibrationPoints[0], canvasCalibrationPoints[1]);
+                mCanvasCalibrationPoints = Utilities.determineOpositeCorners(mCanvasCalibrationPoints[0], mCanvasCalibrationPoints[1]);
 
-                imageCalibrationPoints[0] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[0], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
+                mImageCalibrationPoints[0] = Imaging.getAspectRatioPosition(mCanvasCalibrationPoints[0], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
                     imageCaptured.Source.Width, imageCaptured.Source.Height);
 
-                imageCalibrationPoints[1] = Imaging.getAspectRatioPosition(canvasCalibrationPoints[1], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
+                mImageCalibrationPoints[1] = Imaging.getAspectRatioPosition(mCanvasCalibrationPoints[1], imageCaptured.ActualWidth, imageCaptured.ActualHeight,
                     imageCaptured.Source.Width, imageCaptured.Source.Height);
+
+                //mCalibrationSet = true;
 
                 transitionToState(Constants.state.Initial);
             }
@@ -581,8 +577,8 @@ namespace REMS
             popup.ShowDialog();
             loadUserPreferences();
 
-            _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
-            analyzeGrid.ItemsSource = _thresholds;
+            mThresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
+            dgThresholds.ItemsSource = mThresholds;
         }
 
         private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
@@ -645,7 +641,7 @@ namespace REMS
 
         private void dataGridThreshold_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            drawThreshold(((ThresholdViewModel)analyzeGrid.SelectedItem));
+            drawThreshold(((ThresholdViewModel)dgThresholds.SelectedItem));
         }
 
         private void dataGridScanLevel_MouseUp(object sender, MouseButtonEventArgs e)
@@ -670,21 +666,21 @@ namespace REMS
         /// <param name="e"></param>
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            canvasMouseDownPos = e.GetPosition(canvasDrawing);
+            mCanvasMouseDownPos = e.GetPosition(canvasDrawing);
 
             //Console.WriteLine("X: " + canvasMouseDownPos.X + " Y: " + canvasMouseDownPos.Y);
             if (imageCaptured.Source != null)
             {
-                if (currentState == Constants.state.Initial)
+                if (mCurrentState == Constants.state.Initial)
                 {
                     // Only draw the scan area if we are within the table
                     // calibration area
-                    if (canvasMouseDownPos.X >= canvasCalibrationPoints[0].X &&
-                        canvasMouseDownPos.Y >= canvasCalibrationPoints[0].Y &&
-                        canvasMouseDownPos.X <= canvasCalibrationPoints[1].X &&
-                        canvasMouseDownPos.Y <= canvasCalibrationPoints[1].Y)
+                    if (mCanvasMouseDownPos.X >= mCanvasCalibrationPoints[0].X &&
+                        mCanvasMouseDownPos.Y >= mCanvasCalibrationPoints[0].Y &&
+                        mCanvasMouseDownPos.X <= mCanvasCalibrationPoints[1].X &&
+                        mCanvasMouseDownPos.Y <= mCanvasCalibrationPoints[1].Y)
                     {
-                        mouseDown = true;
+                        mMouseDown = true;
                         //DrawScanArea();
 
                         // The area selection will always be in position 1
@@ -696,27 +692,27 @@ namespace REMS
                         Draw.Rectangle(canvasDrawing, 0, 0, 0, 0, Brushes.Red, true);
                     }
                 }
-                else if (currentState == Constants.state.Calibration)
+                else if (mCurrentState == Constants.state.Calibration)
                 {
-                    numOfCalibrationPoints++;
+                    mCalibrationPoints++;
 
-                    if (numOfCalibrationPoints <= 2)
+                    if (mCalibrationPoints <= 2)
                     {
                         Draw.Circle(canvasDrawing, e.GetPosition(canvasDrawing));
                     }
 
-                    if (numOfCalibrationPoints == 1)
+                    if (mCalibrationPoints == 1)
                     {
-                        canvasCalibrationPoints[0] = e.GetPosition(imageCaptured);
+                        mCanvasCalibrationPoints[0] = e.GetPosition(imageCaptured);
 
                         lblStatus.Text = "Now click on the top right corner of the table";
 
                         btnCancel.IsEnabled = true;
                         btnAccept.IsEnabled = false;
                     }
-                    else if (numOfCalibrationPoints == 2)
+                    else if (mCalibrationPoints == 2)
                     {
-                        canvasCalibrationPoints[1] = e.GetPosition(imageCaptured);
+                        mCanvasCalibrationPoints[1] = e.GetPosition(imageCaptured);
 
                         lblStatus.Text = "Click 'Accept' if rectangle matches table";
                         btnAccept.IsEnabled = true;
@@ -734,25 +730,25 @@ namespace REMS
         {
             // Only do stuff if the user clicked down in the
             // canvas area first.
-            if (mouseDown)
+            if (mMouseDown)
             {
                 // Get the mouse up location
                 //canvasMouseUpPos = e.GetPosition(imageCaptured);
 
                 // Get the selection area
-                if (imageCaptured.Source != null && currentState == Constants.state.Initial)
+                if (imageCaptured.Source != null && mCurrentState == Constants.state.Initial)
                 {
-                    mouseDown = false;
+                    mMouseDown = false;
 
-                    if (canvasMouseDownPos.X != canvasMouseUpPos.X && canvasMouseDownPos.Y != canvasMouseUpPos.Y)
+                    if (mCanvasMouseDownPos.X != mCanvasMouseUpPos.X && mCanvasMouseDownPos.Y != mCanvasMouseUpPos.Y)
                     {
-                        scanAreaSet = true;
+                        mScanAreaIsSet = true;
                         btnAccept.IsEnabled = true;
                         lblStatus.Text = Constants.StatusInitial3;
                     }
                     else
                     {
-                        scanAreaSet = false;
+                        mScanAreaIsSet = false;
                         btnAccept.IsEnabled = false;
                         lblStatus.Text = Constants.StatusInitial2;
                     }
@@ -768,7 +764,7 @@ namespace REMS
         /// <param name="e"></param>
         private void Grid_MouseMove(object sender, MouseEventArgs e)
         {
-            if (mouseDown)
+            if (mMouseDown)
             {
                 // When the mouse is held down, reposition the drag selection box.
                 Point mousePos = e.GetPosition(canvasDrawing);
@@ -776,34 +772,34 @@ namespace REMS
                 Rectangle selectionBox = (Rectangle)canvasDrawing.Children[1];
 
                 // Restrict movement to image of PCB
-                if (mousePos.X < canvasCalibrationPoints[0].X) mousePos.X = canvasCalibrationPoints[0].X;
-                if (mousePos.X > canvasCalibrationPoints[1].X) mousePos.X = canvasCalibrationPoints[1].X;
-                if (mousePos.Y < canvasCalibrationPoints[0].Y) mousePos.Y = canvasCalibrationPoints[0].Y;
-                if (mousePos.Y > canvasCalibrationPoints[1].Y) mousePos.Y = canvasCalibrationPoints[1].Y;
+                if (mousePos.X < mCanvasCalibrationPoints[0].X) mousePos.X = mCanvasCalibrationPoints[0].X;
+                if (mousePos.X > mCanvasCalibrationPoints[1].X) mousePos.X = mCanvasCalibrationPoints[1].X;
+                if (mousePos.Y < mCanvasCalibrationPoints[0].Y) mousePos.Y = mCanvasCalibrationPoints[0].Y;
+                if (mousePos.Y > mCanvasCalibrationPoints[1].Y) mousePos.Y = mCanvasCalibrationPoints[1].Y;
 
-                canvasMouseUpPos = mousePos;
+                mCanvasMouseUpPos = mousePos;
 
                 // Position box
-                if (canvasMouseDownPos.X < mousePos.X)
+                if (mCanvasMouseDownPos.X < mousePos.X)
                 {
-                    Canvas.SetLeft(canvasDrawing.Children[1], canvasMouseDownPos.X);
-                    selectionBox.Width = mousePos.X - canvasMouseDownPos.X;
+                    Canvas.SetLeft(canvasDrawing.Children[1], mCanvasMouseDownPos.X);
+                    selectionBox.Width = mousePos.X - mCanvasMouseDownPos.X;
                 }
                 else
                 {
                     Canvas.SetLeft(selectionBox, mousePos.X);
-                    selectionBox.Width = canvasMouseDownPos.X - mousePos.X;
+                    selectionBox.Width = mCanvasMouseDownPos.X - mousePos.X;
                 }
 
-                if (canvasMouseDownPos.Y < mousePos.Y)
+                if (mCanvasMouseDownPos.Y < mousePos.Y)
                 {
-                    Canvas.SetTop(selectionBox, canvasMouseDownPos.Y);
-                    selectionBox.Height = mousePos.Y - canvasMouseDownPos.Y;
+                    Canvas.SetTop(selectionBox, mCanvasMouseDownPos.Y);
+                    selectionBox.Height = mousePos.Y - mCanvasMouseDownPos.Y;
                 }
                 else
                 {
                     Canvas.SetTop(selectionBox, mousePos.Y);
-                    selectionBox.Height = canvasMouseDownPos.Y - mousePos.Y;
+                    selectionBox.Height = mCanvasMouseDownPos.Y - mousePos.Y;
                 }
             }
         }
@@ -819,17 +815,20 @@ namespace REMS
             if (imageCaptured.Source != null)
             {
                 // Convert from image location to canvas location
-                canvasCalibrationPoints[0] = Imaging.getAspectRatioPosition(imageCalibrationPoints[0],
+                mCanvasCalibrationPoints[0] = Imaging.getAspectRatioPosition(mImageCalibrationPoints[0],
                         imageCaptured.Source.Width, imageCaptured.Source.Height, imageCaptured.ActualWidth, imageCaptured.ActualHeight);
 
-                canvasCalibrationPoints[1] = Imaging.getAspectRatioPosition(imageCalibrationPoints[1],
+                mCanvasCalibrationPoints[1] = Imaging.getAspectRatioPosition(mImageCalibrationPoints[1],
                         imageCaptured.Source.Width, imageCaptured.Source.Height, imageCaptured.ActualWidth, imageCaptured.ActualHeight);
 
                 // Delete everything in the selectorCanvas
                 canvasDrawing.Children.Clear();
 
                 // Draw the table area
-                drawMotorTravelArea();
+                //if (mCalibrationSet)
+                //{
+                    drawMotorTravelArea();
+                //}
             }
         }
 
@@ -844,50 +843,50 @@ namespace REMS
         private void setScanArea()
         {
             // Crop down the image to the selected region
-            canvasScanArea = Utilities.determineOpositeCorners(canvasMouseDownPos, canvasMouseUpPos);
+            mCanvasScanArea = Utilities.determineOpositeCorners(mCanvasMouseDownPos, mCanvasMouseUpPos);
 
             // Zoom in on the scan area
-            ImageSource lImage = Imaging.cropImage(imageCaptured, canvasScanArea[0], canvasScanArea[1]);
+            ImageSource lImage = Imaging.cropImage(imageCaptured, mCanvasScanArea[0], mCanvasScanArea[1]);
             imageCaptured.Source = lImage;
 
-            canvasXStepSize = (canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X) / motorXTravelDistance;
-            canvasYStepSize = (canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y) / motorYTravelDistance;
+            double canvasXStepSize = (mCanvasCalibrationPoints[1].X - mCanvasCalibrationPoints[0].X) / mMotorXTravelDistance;
+            double canvasYStepSize = (mCanvasCalibrationPoints[1].Y - mCanvasCalibrationPoints[0].Y) / mMotorYTravelDistance;
 
             // Convert the bounds to an actual motor positions
-            motorScanAreaPoints[0].X = Math.Round((canvasScanArea[0].X - canvasCalibrationPoints[0].X) / canvasXStepSize, 0, MidpointRounding.ToEven);
-            motorScanAreaPoints[0].Y = Math.Round((canvasScanArea[0].Y - canvasCalibrationPoints[0].Y) / canvasYStepSize, 0, MidpointRounding.ToEven);
-            motorScanAreaPoints[1].X = Math.Round((canvasScanArea[1].X - canvasCalibrationPoints[0].X) / canvasXStepSize, 0, MidpointRounding.ToEven);
-            motorScanAreaPoints[1].Y = Math.Round((canvasScanArea[1].Y - canvasCalibrationPoints[0].Y) / canvasYStepSize, 0, MidpointRounding.ToEven);
+            mMotorScanAreaPoints[0].X = Math.Round((mCanvasScanArea[0].X - mCanvasCalibrationPoints[0].X) / canvasXStepSize, 0, MidpointRounding.ToEven);
+            mMotorScanAreaPoints[0].Y = Math.Round((mCanvasScanArea[0].Y - mCanvasCalibrationPoints[0].Y) / canvasYStepSize, 0, MidpointRounding.ToEven);
+            mMotorScanAreaPoints[1].X = Math.Round((mCanvasScanArea[1].X - mCanvasCalibrationPoints[0].X) / canvasXStepSize, 0, MidpointRounding.ToEven);
+            mMotorScanAreaPoints[1].Y = Math.Round((mCanvasScanArea[1].Y - mCanvasCalibrationPoints[0].Y) / canvasYStepSize, 0, MidpointRounding.ToEven);
 
             // Give the motors a starting position
-            motorXPos = Convert.ToInt32(motorScanAreaPoints[0].X);
-            motorYPos = Convert.ToInt32(motorScanAreaPoints[0].Y);
+            motorXPos = Convert.ToInt32(mMotorScanAreaPoints[0].X);
+            motorYPos = Convert.ToInt32(mMotorScanAreaPoints[0].Y);
             motorZPos = nsZMin.Value;
 
             // Update the scan area width and length
-            xScanPoints = (int)((motorScanAreaPoints[1].X - motorScanAreaPoints[0].X) / nsXStepSize.Value) + 1;
-            yScanPoints = (int)((motorScanAreaPoints[1].Y - motorScanAreaPoints[0].Y) / nsYStepSize.Value) + 1;
+            mXScanPoints = (int)((mMotorScanAreaPoints[1].X - mMotorScanAreaPoints[0].X) / nsXStepSize.Value) + 1;
+            mYScanPoints = (int)((mMotorScanAreaPoints[1].Y - mMotorScanAreaPoints[0].Y) / nsYStepSize.Value) + 1;
 
             // Calculate how long it will take
             int numXYPlanes = (int)Math.Ceiling((double)(nsZMax.Value - nsZMin.Value) / (double)nsZStepSize.Value) + 1;
 
-            _scans.Clear();
+            mScans.Clear();
             for (int i = 0; i < numXYPlanes; i++)
             {
                 int temp = (int)(nsZMin.Value + (nsZStepSize.Value * i));
                 if (temp > (int)nsZMax.Value) temp = (int)nsZMax.Value;
                 ScanLevel lScan = new ScanLevel(temp);
-                _scans.Add(lScan);
+                mScans.Add(lScan);
             }
-            dgZScanPoints.ItemsSource = _scans;
+            dgZScanPoints.ItemsSource = mScans;
             dgZScanPoints.SelectedIndex = 0;
 
-            totalScanPoints = Convert.ToInt32(xScanPoints * yScanPoints * numXYPlanes);
+            mTotalScanPoints = Convert.ToInt32(mXScanPoints * mYScanPoints * numXYPlanes);
 
-            CDTimer = new CountdownTimer(lblCDTimer, totalScanPoints);
+            mCDTimer = new CountdownTimer(lblCDTimer, mTotalScanPoints);
 
             // Initialize the heatmap
-            mHeatMap.Create((int)xScanPoints, (int)yScanPoints, IntensityColorKeyGrid);
+            mHeatMap.Create((int)mXScanPoints, (int)mYScanPoints, IntensityColorKeyGrid);
 
             lblXPosition.Text = motorXPos.ToString();
             lblYPosition.Text = motorYPos.ToString();
@@ -921,63 +920,16 @@ namespace REMS
         private void drawMotorTravelArea()
         {
             // Draw the table area
-            Draw.Rectangle(canvasDrawing,
-                canvasCalibrationPoints[0].X,
-                canvasCalibrationPoints[0].Y,
-                canvasCalibrationPoints[1].X - canvasCalibrationPoints[0].X,
-                canvasCalibrationPoints[1].Y - canvasCalibrationPoints[0].Y,
-                Brushes.Blue);
-        }
-
-        private void analyzeScannedData(int[] data, out Boolean Passed, out int Value)
-        {
-            // 6.7mhz
-            // 100mhz
-            Passed = true; // Default to Passed;
-            Value = 0;
-
-            int lMinDifference;
-            double stepSize = (double)(_SAMaxFrequency - _SAMinFrequency) / data.Count();
-            double currFreq = _SAMinFrequency;
-
-            ThresholdViewModel lThreshold = mSelectedThreshold;
-            if (lThreshold != null)
+            try
             {
-                lMinDifference = Convert.ToInt32(lThreshold.Limits[0].Amplitude);
-                foreach (int lreading in data) // number of data points collected
-                {
-                    ThresholdLimitViewModel prevLimit = null;
-                    foreach (ThresholdLimitViewModel lLimit in lThreshold.Limits) // limits within this threshold
-                    {
-                        if (prevLimit == null)
-                            prevLimit = lLimit;
-
-                        if (currFreq > Convert.ToInt32(lLimit.Frequency))
-                        {
-                            prevLimit = lLimit;
-                            continue;
-                        }
-
-                        // If we have gotten this far, we know we are comparing 
-                        //the data to the right threshold
-                        if (Convert.ToInt32(prevLimit.Amplitude) - lreading < lMinDifference)
-                        {
-                            lMinDifference = Convert.ToInt32(prevLimit.Amplitude) - lreading;
-                            Value = lMinDifference * (-1);
-                        }
-
-                        if (lreading > Convert.ToInt32(prevLimit.Amplitude))
-                        {
-                            lThreshold.State = "Failed";
-                            Passed = false;
-                            break;
-                        }
-                    }
-
-                    currFreq += stepSize;
-                }
+                Draw.Rectangle(canvasDrawing,
+                    mCanvasCalibrationPoints[0].X,
+                    mCanvasCalibrationPoints[0].Y,
+                    mCanvasCalibrationPoints[1].X - mCanvasCalibrationPoints[0].X,
+                    mCanvasCalibrationPoints[1].Y - mCanvasCalibrationPoints[0].Y,
+                    Brushes.Blue);
             }
-            
+            catch (Exception) { }
         }
 
         private void getDataAtCurrentLocation()
@@ -987,22 +939,17 @@ namespace REMS
 
             this.Dispatcher.Invoke((Action)(() =>
             {
-                lCurrentCol = (motorXPos - (int)motorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
-                lCurrentRow = (motorYPos - (int)motorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
+                lCurrentCol = (motorXPos - (int)mMotorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
+                lCurrentRow = (motorYPos - (int)mMotorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
             }));
 
             int lMaxDifference;
             Boolean lPassed;
 
-            _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "In Progress";
-
-            // Start the count down timer if it is
-            // not already started
-            //if (!CDTimer.Enabled)
-            //    CDTimer.Start();
+            mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).State = "In Progress";
 
             int[] lData = getScannedData(461);
-            analyzeScannedData(lData, out lPassed, out lMaxDifference);
+            Utilities.analyzeScannedData(lData, mSAMinFrequency, mSAMaxFrequency, mSelectedThreshold, out lPassed, out lMaxDifference);
 
             // Save collected data
             Logger.writeToFile(mLogFileName + ".csv", lCurrentCol, lCurrentRow, motorZPos, lData);
@@ -1032,17 +979,17 @@ namespace REMS
 
             // Determine the next scan position
              
-            nextY += (currentVerticalScanDirection == Constants.direction.South) ? nsYStepSize.Value : -nsYStepSize.Value;
+            nextY += (mVerticalScanDirection == Constants.direction.South) ? nsYStepSize.Value : -nsYStepSize.Value;
 
-            if (nextY > motorScanAreaPoints[1].Y || nextY < motorScanAreaPoints[0].Y)
+            if (nextY > mMotorScanAreaPoints[1].Y || nextY < mMotorScanAreaPoints[0].Y)
             {
-                currentVerticalScanDirection = Utilities.reverseDirection(currentVerticalScanDirection);
-                nextX += (currentHorizontalScanDirection == Constants.direction.East) ? nsXStepSize.Value : -nsXStepSize.Value;
+                mVerticalScanDirection = Utilities.reverseDirection(mVerticalScanDirection);
+                nextX += (mHorizontalScanDirection == Constants.direction.East) ? nsXStepSize.Value : -nsXStepSize.Value;
             }
 
-            if (nextX > motorScanAreaPoints[1].X || nextX < motorScanAreaPoints[0].X)
+            if (nextX > mMotorScanAreaPoints[1].X || nextX < mMotorScanAreaPoints[0].X)
             {
-                _scans.ElementAt<ScanLevel>(currentZScanIndex).State = "Complete";
+                mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).State = "Complete";
 
                 if (nextZ == nsZMax.Value)
                 {
@@ -1052,22 +999,22 @@ namespace REMS
                 {
                     nextZ = (nextZ + nsZStepSize.Value > nsZMax.Value) ? nsZMax.Value : nextZ + nsZStepSize.Value;
 
-                    currentZScanIndex++;
+                    mCurrentZScanIndex++;
 
-                    currentHorizontalScanDirection = Utilities.reverseDirection(currentHorizontalScanDirection);
+                    mHorizontalScanDirection = Utilities.reverseDirection(mHorizontalScanDirection);
                 }
             }
 
             // Make sure nextY stays in bounds
-            if (nextY > motorScanAreaPoints[1].Y)
+            if (nextY > mMotorScanAreaPoints[1].Y)
                 nextY += -nsYStepSize.Value;
-            else if (nextY < motorScanAreaPoints[0].Y)
+            else if (nextY < mMotorScanAreaPoints[0].Y)
                 nextY += nsYStepSize.Value;
 
             // Make sure nextX stays in bounds
-            if (nextX > motorScanAreaPoints[1].X)
+            if (nextX > mMotorScanAreaPoints[1].X)
                 nextX += -nsXStepSize.Value;
-            else if (nextX < motorScanAreaPoints[0].X)
+            else if (nextX < mMotorScanAreaPoints[0].X)
                 nextX += nsXStepSize.Value;
 
             motorXPos = nextX;
@@ -1110,28 +1057,20 @@ namespace REMS
             return data;
         }
 
-        /*private void startSimulator()
-        {
-            simulatorTimer = new DispatcherTimer();
-            simulatorTimer.Tick += new EventHandler(moveMotors_Tick);
-            simulatorTimer.Interval = new TimeSpan(0, 0, 1);
-            simulatorTimer.Start();
-        }*/
-
         private void loadUserPreferences()
         {
             // Load user/application settings
-            imageCalibrationPoints[0] = (Point)Properties.Settings.Default["TableBL"];
-            imageCalibrationPoints[1] = (Point)Properties.Settings.Default["TableTR"];
+            mImageCalibrationPoints[0] = (Point)Properties.Settings.Default["TableBL"];
+            mImageCalibrationPoints[1] = (Point)Properties.Settings.Default["TableTR"];
 
-            motorXTravelDistance = Properties.Settings.Default.motorXTravelDistance;
-            motorYTravelDistance = Properties.Settings.Default.motorYTravelDistance;
-            motorZTravelDistance = Properties.Settings.Default.motorZTravelDistance;
+            mMotorXTravelDistance = Properties.Settings.Default.motorXTravelDistance;
+            mMotorYTravelDistance = Properties.Settings.Default.motorYTravelDistance;
+            mMotorZTravelDistance = Properties.Settings.Default.motorZTravelDistance;
 
             sHeatMapOpacity.Value = Properties.Settings.Default.heatMapOpacity;
 
-            _SAMinFrequency = Properties.Settings.Default.SAMinFrequency;
-            _SAMaxFrequency = Properties.Settings.Default.SAMaxFrequency;
+            mSAMinFrequency = Properties.Settings.Default.SAMinFrequency;
+            mSAMaxFrequency = Properties.Settings.Default.SAMaxFrequency;
 
             nsXStepSize.Value = (int)Properties.Settings.Default["nsXStepSize"];
             nsYStepSize.Value = (int)Properties.Settings.Default["nsYStepSize"];
@@ -1142,12 +1081,12 @@ namespace REMS
 
         private void saveUserPreferences()
         {
-            Properties.Settings.Default["TableBL"] = imageCalibrationPoints[0];
-            Properties.Settings.Default["TableTR"] = imageCalibrationPoints[1];
+            Properties.Settings.Default["TableBL"] = mImageCalibrationPoints[0];
+            Properties.Settings.Default["TableTR"] = mImageCalibrationPoints[1];
 
-            Properties.Settings.Default.motorXTravelDistance = motorXTravelDistance;
-            Properties.Settings.Default.motorYTravelDistance = motorYTravelDistance;
-            Properties.Settings.Default.motorZTravelDistance = motorZTravelDistance;
+            Properties.Settings.Default.motorXTravelDistance = mMotorXTravelDistance;
+            Properties.Settings.Default.motorYTravelDistance = mMotorYTravelDistance;
+            Properties.Settings.Default.motorZTravelDistance = mMotorZTravelDistance;
 
             Properties.Settings.Default["nsXStepSize"] = nsXStepSize.Value;
             Properties.Settings.Default["nsYStepSize"] = nsYStepSize.Value;
@@ -1191,25 +1130,24 @@ namespace REMS
             {
                 using (StreamReader srLog = new StreamReader(aFileName))
                 {
+                    // Read the log file
                     while (srLog.Peek() >= 0)
                     {
+                        // Put the line into an array
                         lLine = srLog.ReadLine().Split(',');
+
+                        // if this line is the Z level we are interested in...
                         if (lLine[2] == aZPos)
                         {
                             lFoundData = true;
+                            // Extract the amplitude values from this line
                             int[] lData = new int[lLine.Count() - 3];
-                            //Array.Copy(lLine, 3, data, 0, lLine.Count() - 3);
-
                             for (int i = 0; i < lLine.Count() - 3; i++)
                             {
-                                try
-                                {
-                                    lData[i] = Convert.ToInt32(lLine[i + 3]);
-                                }
-                                catch (Exception) { };
+                                lData[i] = Convert.ToInt32(lLine[i + 3]);
                             }
 
-                            analyzeScannedData(lData, out lPassed, out lValue);                            
+                            Utilities.analyzeScannedData(lData, mSAMinFrequency, mSAMaxFrequency, mSelectedThreshold, out lPassed, out lValue);                            
 
                             mHeatMap.addIntensityPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lValue);
                         }
@@ -1237,9 +1175,9 @@ namespace REMS
 
         private void analyzeGrid_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
         {
-            if (analyzeGrid.SelectedItem != null)
+            if (dgThresholds.SelectedItem != null)
             {
-                mSelectedThreshold = ((ThresholdViewModel)analyzeGrid.SelectedItem);
+                mSelectedThreshold = ((ThresholdViewModel)dgThresholds.SelectedItem);
 
             }
         }
