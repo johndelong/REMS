@@ -47,8 +47,28 @@
                                     Text="{Binding ElementName=PopupWindow, Path=motorZTravelDistance, Mode=TwoWay}" />
                         </Grid>
                     </GroupBox>
-                    
-                    
+
+                    <GroupBox Grid.Row="0" Grid.Column="1" Header="Motor Travel Distance" HorizontalAlignment="Left">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0" Grid.Column="0" Content="VISA: " />
+
+                            <TextBox Name="tbSAConnectionString" Grid.Row="0" Grid.Column="1" Width="160" Margin="3"
+                                    Text="{Binding ElementName=PopupWindow, Path=saConnectionString, Mode=TwoWay}" />
+                        </Grid>
+                    </GroupBox>
+
+
                 </Grid>
             </TabItem>
             <TabItem Header="Thresholds">

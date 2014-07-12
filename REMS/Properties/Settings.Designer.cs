@@ -202,5 +202,17 @@ namespace REMS.Properties {
                 this["MotorCommPort"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("USB0::2391::65519::cn0743a182::0::INSTR")]
+        public string SAConnectionString {
+            get {
+                return ((string)(this["SAConnectionString"]));
+            }
+            set {
+                this["SAConnectionString"] = value;
+            }
+        }
     }
 }

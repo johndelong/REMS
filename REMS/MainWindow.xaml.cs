@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Resources;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using NationalInstruments;
 using REMS.classes;
+using REMS.drivers;
 using REMS.popups;
 using REMS.data;
 using System.Windows.Threading;
@@ -67,6 +69,7 @@ namespace REMS
 
         // Connected Devices
         private Motor mMotor;
+        private agn934xni mScope;
 
         // Binded Variables
         private ObservableCollection<ThresholdViewModel> mThresholds;
@@ -104,6 +107,18 @@ namespace REMS
             mMotor = new Motor();
             mMotor.connect();
 
+            // Connect to the spectrum analyzer
+            
+            try
+            {
+                //mScope = new agn934xni("USB0::2391::65519::cn0743a182::0::INSTR", false, false);
+                
+                mScope = new agn934xni(Properties.Settings.Default.SAConnectionString, false, false);
+                mScope.ConfigureFrequencyStartStop(mSAMinFrequency, mSAMaxFrequency);
+                Console.WriteLine("Success!");
+            }
+            catch (Exception) { }
+
             // Start at the initial state
             transitionToState(Constants.state.Overview);
         }
@@ -126,6 +141,8 @@ namespace REMS
                         break;
                     }
 
+                    mMotor.move(motorXPos, motorYPos, (int)mMotorZTravelDistance - motorZPos);
+                    
                     getDataAtCurrentLocation();
 
                     // Determine the next scan location or if we have
@@ -135,8 +152,12 @@ namespace REMS
                         determineNextScanPoint();
                     }));
 
-                    if (!mScanFinished)
-                        mMotor.move(motorXPos, motorYPos, motorZPos);
+                    
+                }
+
+                if (mScanFinished)
+                {
+                    mMotor.home();
                 }
             }
         }
@@ -168,16 +189,48 @@ namespace REMS
                 double stepSize = (double)(mSAMaxFrequency - mSAMinFrequency) / (numberOfPoints);
                 double currFreq = mSAMinFrequency;
 
+
                 Point[] data = new Point[numberOfPoints];
+                //ChartCollection<double, double>[] = new ChartCollection<double, double>[numberOfPoints];
+
 
                 for (int i = 0; i < numberOfPoints; i++)
                 {
-                    data[i] = new Point(currFreq, Convert.ToInt32(lLine[i + 3]));
+                    // BUG: Point will not allow for negative values
+                    data[i] = new Point(currFreq, Convert.ToDouble(lLine[i + 3]));
 
                     currFreq += stepSize;
                 }
 
                 graph1.Data[1] = data;
+
+                // Only show the section of the treshold that applies to the data collected
+                ThresholdViewModel lThresholdSection = new ThresholdViewModel();
+                ThresholdLimitViewModel lPrevLimit = null;
+                foreach (ThresholdLimitViewModel lLimit in mSelectedThreshold.Limits)
+                {
+                    if (lPrevLimit == null)
+                        lPrevLimit = lLimit;
+
+                    if (lPrevLimit.Frequency < data[0].X && lLimit.Frequency > data[0].X)
+                    {
+                        lThresholdSection.Limits.Add(new ThresholdLimitViewModel(data[0].X, lPrevLimit.Amplitude));
+                    }
+
+                    if (lPrevLimit.Frequency < data[numberOfPoints - 1].X && lLimit.Frequency > data[numberOfPoints - 1].X)
+                    {
+                        lThresholdSection.Limits.Add(new ThresholdLimitViewModel(data[numberOfPoints - 1].X, lPrevLimit.Amplitude));
+                    }
+
+                    if (lLimit.Frequency > data[0].X && lLimit.Frequency < data[numberOfPoints - 1].X)
+                    {
+                        lThresholdSection.Limits.Add(lLimit);
+                    }
+
+                    lPrevLimit = lLimit;
+                }
+
+                drawThreshold(lThresholdSection);
             }
             else
             {
@@ -266,6 +319,9 @@ namespace REMS
                         canvasDrawing.Visibility = Visibility.Visible;
                         btnCalibrate.IsEnabled = true;
                     }
+
+                    // Home the motors
+                    worker.RunWorkerAsync();
                     break;
 
                 case Constants.state.Calibration:
@@ -346,6 +402,9 @@ namespace REMS
                     // Update Status
                     lblStatus.Text = Constants.StatusStopped;
 
+                    // Emergancy Stop
+                    mMotor.stop();
+
                     // Stop the simulator
                     //simulatorTimer.Stop();
                     if (worker.IsBusy == true && worker.WorkerSupportsCancellation == true)
@@ -386,8 +445,7 @@ namespace REMS
 
                     canvasDrawing.Visibility = Visibility.Collapsed;
 
-                    // Home the motors
-                    worker.RunWorkerAsync();
+                    
                     break;
             }
         }
@@ -608,25 +666,21 @@ namespace REMS
                 Imaging.SaveToJPG(gridResultsTab, lFilePath);
         }
 
+        private void motorJogRelease_Click(object sender, MouseButtonEventArgs e)
+        {
+            mMotor.decelerate();
+            mMotor.getPosition();
+
+        }
+
         private void motorJogUp_Click(object sender, RoutedEventArgs e)
         {
-            //Vxm.DriverTerminalShowState(1, 0);
-            //Vxm.PortOpen(1, 9600);
-            //Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
-            //Vxm.PortClose();
-            //Vxm.DriverTerminalShowState(0, 0);
+            mMotor.sendCommand("F,C,I2M-0,R");
         }
 
         private void motorJogDown_Click(object sender, RoutedEventArgs e)
         {
-            //int status = 0;
-
-            //status = Vxm.PortOpen(3, 9600);
-            //Console.WriteLine("Connection to Motor: " + (status == 1 ? "Success" : "Failed"));
-
-            //Vxm.PortSendCommands("F,C,I1M1000,I1M-1000,R");
-            //Vxm.PortWaitForChar("^", 0);
-            //Vxm.PortClose();
+            mMotor.sendCommand("F,C,I2M0,R");
         }
 
         private void motorJogLeft_Click(object sender, RoutedEventArgs e)
@@ -859,8 +913,8 @@ namespace REMS
             mMotorScanAreaPoints[1].Y = Math.Round((mCanvasScanArea[1].Y - mCanvasCalibrationPoints[0].Y) / canvasYStepSize, 0, MidpointRounding.ToEven);
 
             // Give the motors a starting position
-            motorXPos = Convert.ToInt32(mMotorScanAreaPoints[0].X);
-            motorYPos = Convert.ToInt32(mMotorScanAreaPoints[0].Y);
+            motorXPos = Convert.ToInt32(mMotorScanAreaPoints[0].X) + (nsXStepSize.Value / 2);
+            motorYPos = Convert.ToInt32(mMotorScanAreaPoints[0].Y) + (nsYStepSize.Value / 2);
             motorZPos = nsZMin.Value;
 
             // Update the scan area width and length
@@ -939,16 +993,25 @@ namespace REMS
 
             this.Dispatcher.Invoke((Action)(() =>
             {
-                lCurrentCol = (motorXPos - (int)mMotorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
-                lCurrentRow = (motorYPos - (int)mMotorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
+                lCurrentCol = (motorXPos - (nsXStepSize.Value / 2) - (int)mMotorScanAreaPoints[0].X) / (int)nsXStepSize.Value;
+                lCurrentRow = (motorYPos - (nsYStepSize.Value / 2) - (int)mMotorScanAreaPoints[0].Y) / (int)nsYStepSize.Value;
             }));
 
-            int lMaxDifference;
+            double lMaxDifference;
             Boolean lPassed;
 
             mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).State = "In Progress";
 
-            int[] lData = getScannedData(461);
+            //int[] lData = getScannedData(461);
+            double[] lData = new double[461];
+            int lDataLen;
+            int lStatus;
+
+            if (mScope != null)
+            {
+                lStatus = mScope.FetchYTrace("TRACE1", 461, out lDataLen, lData);
+            }
+
             Utilities.analyzeScannedData(lData, mSAMinFrequency, mSAMaxFrequency, mSelectedThreshold, out lPassed, out lMaxDifference);
 
             // Save collected data
@@ -959,7 +1022,7 @@ namespace REMS
             {
                 this.Dispatcher.Invoke((Action)(() =>
                 {
-                    mHeatMap.addIntensityPixel(lCurrentCol, lCurrentRow, lMaxDifference);
+                    mHeatMap.addIntensityPixel(lCurrentCol, lCurrentRow, Convert.ToInt32(lMaxDifference));
                     mHeatMap.updateIntensityKey(IntensityColorKeyGrid);
                 }));
             }
@@ -1125,7 +1188,7 @@ namespace REMS
             string[] lLine = null;
             Boolean lFoundData = false;
             Boolean lPassed;
-            int lValue;
+            double lValue;
             try
             {
                 using (StreamReader srLog = new StreamReader(aFileName))
@@ -1141,15 +1204,15 @@ namespace REMS
                         {
                             lFoundData = true;
                             // Extract the amplitude values from this line
-                            int[] lData = new int[lLine.Count() - 3];
+                            double[] lData = new double[lLine.Count() - 3];
                             for (int i = 0; i < lLine.Count() - 3; i++)
                             {
-                                lData[i] = Convert.ToInt32(lLine[i + 3]);
+                                lData[i] = Convert.ToDouble(lLine[i + 3]);
                             }
 
                             Utilities.analyzeScannedData(lData, mSAMinFrequency, mSAMaxFrequency, mSelectedThreshold, out lPassed, out lValue);                            
 
-                            mHeatMap.addIntensityPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), lValue);
+                            mHeatMap.addIntensityPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), Convert.ToInt32(lValue));
                         }
                         else if (lFoundData)
                             break;
@@ -1178,7 +1241,6 @@ namespace REMS
             if (dgThresholds.SelectedItem != null)
             {
                 mSelectedThreshold = ((ThresholdViewModel)dgThresholds.SelectedItem);
-
             }
         }
 
@@ -1186,5 +1248,7 @@ namespace REMS
         {
             transitionToState(Constants.state.Initial);
         }
+
+        
     }
 }

@@ -35,6 +35,7 @@ namespace REMS.popups
         private string _SAMinFrequency = Convert.ToString(Properties.Settings.Default.SAMinFrequency);
         private string _SAMaxFrequency = Convert.ToString(Properties.Settings.Default.SAMaxFrequency);
         private string _MotorCommPort = Convert.ToString(Properties.Settings.Default.MotorCommPort);
+        private string _SAConnectionStrring = Properties.Settings.Default.SAConnectionString;
 
         public PrefPopup()
         {
@@ -80,6 +81,15 @@ namespace REMS.popups
         private void btnApply_Click(object sender, RoutedEventArgs e)
         {
             savePreferences();
+        }
+
+        public string saConnectionString
+        {
+            get { return _SAConnectionStrring; }
+            set
+            {
+                _SAConnectionStrring = value;
+            }
         }
 
         public string motorXTravelDistance

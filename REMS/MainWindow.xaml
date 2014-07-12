@@ -104,10 +104,12 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="5*" />
                     </Grid.ColumnDefinitions>
-                    <Button Name="btnMotorJogUp" Grid.Row="0" Grid.Column="1" Width="50" Height="50" Click="motorJogUp_Click" >
+                    <Button Name="btnMotorJogUp" Grid.Row="0" Grid.Column="1" Width="50" Height="50" 
+                            PreviewMouseDown="motorJogUp_Click" PreviewMouseUp="motorJogRelease_Click" >
                         <Path Fill="Black" Data="M 0 6 L 12 6 L 6 0 Z" Height="32" Stretch="Fill" Width="32"/>
                     </Button>
-                    <Button Name="btnMotorJogDown" Grid.Row="2" Grid.Column="1" Width="50" Height="50" Click="motorJogDown_Click" >
+                    <Button Name="btnMotorJogDown" Grid.Row="2" Grid.Column="1" Width="50" Height="50" 
+                            PreviewMouseDown="motorJogDown_Click" PreviewMouseUp="motorJogRelease_Click">
                         <Path Fill="Black" Data="M 0 0 L 6 6 L 12 0 Z" Height="32" Stretch="Fill" Width="32"/>
                     </Button>
                     <Button Name="btnMotorJogLeft" Grid.Row="1" Grid.Column="0" Width="50" Height="50" HorizontalAlignment="Right" >

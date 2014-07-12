@@ -17,8 +17,8 @@ namespace REMS.classes
         private int mRows = 0;
         private int mColumns = 0;
         private double mPixelOpacity;
-        private int mIntensityMax = 0;
-        private int mIntensityMin = 0;
+        private double mIntensityMax = 0;
+        private double mIntensityMin = 0;
         private Boolean mIntensityUpdates = false;
         private List<Pixel> mPixels;
 
@@ -138,7 +138,7 @@ namespace REMS.classes
             }
         }
 
-        public void addIntensityPixel(int aCol, int aRow, int aValue)
+        public void addIntensityPixel(int aCol, int aRow, double aValue)
         {
             mPixels.Add(new Pixel(aCol, aRow, aValue));
 
@@ -212,7 +212,7 @@ namespace REMS.classes
             }
         }
 
-        private Color GetColor(int aMin /*Complete Blue*/, int aMax /*Complete Red*/, int aValue)
+        private Color GetColor(double aMin /*Complete Blue*/, double aMax /*Complete Red*/, double aValue)
         {
             if (aMin >= aMax) return Colors.Black;
 
@@ -239,9 +239,9 @@ namespace REMS.classes
 
         public void updateIntensityKey(Grid ColorKey)
         {
-            int lRange = mIntensityMax - mIntensityMin;
-            int lStep = lRange / 5;
-            int lCurrent = mIntensityMax;
+            double lRange = mIntensityMax - mIntensityMin;
+            double lStep = lRange / 5;
+            double lCurrent = mIntensityMax;
 
             foreach (Object lObj in ColorKey.Children)
             {
@@ -259,9 +259,9 @@ namespace REMS.classes
         {
             private int _column;
             private int _row;
-            private int _value;
+            private double _value;
 
-            public Pixel(int Column, int Row, int Value)
+            public Pixel(int Column, int Row, double Value)
             {
                 _column = Column;
                 _row = Row;
@@ -280,7 +280,7 @@ namespace REMS.classes
                 set { _row = value; }
             }
 
-            public int Value
+            public double Value
             {
                 get { return _value; }
                 set { _value = value; }

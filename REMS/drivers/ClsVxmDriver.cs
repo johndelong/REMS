@@ -15,8 +15,10 @@ public class ClsVxmDriver
 	//Use loadlibrary and getprocaddress to see if the driver functions exist
 	[DllImport("kernel32.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int LoadLibrary(string lpLibFileName);
+
 	[DllImport("kernel32.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int GetProcAddress(int hModule, string lpProcName);
+
 	[DllImport("kernel32.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int CallWindowProc(int lpPrevWndFunc, int hWnd, int Msg, int wParam, int lParam);
 
@@ -25,6 +27,7 @@ public class ClsVxmDriver
 
 	[DllImport("kernel32.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern bool FreeLibrary(int hLibModule);
+
 	[DllImport("kernel32.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int CopyMemory(object lpDest, object lpSource, int cBytes);
 
@@ -41,8 +44,10 @@ public class ClsVxmDriver
 	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int DriverSendToPort(string CommandOut);		//Send Commands to Vxm
 	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+
 	private static extern string ReadFromPort();		//Read replies from Vxm
 	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+
 	private static extern int CountCharsAtPort();		//Count number of chars at port waiting to be read
 	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int SearchForChars(string CharsToFind);		//Search for chars or string at the port
@@ -111,7 +116,7 @@ public class ClsVxmDriver
 				hRemoveFromPort = GetProcAddress(hLib, "RemoveFromPort");			//Remove from port
 				hGetMotorPosition = GetProcAddress(hLib, "GetMotorPosition");			//Get Motor Position
 				hWaitForChar = GetProcAddress(hLib, "WaitForChar");			//Wait for char
-				hWaitForCharMotorPosition = GetProcAddress(hLib, "WWaitForCharWithMotorPosition");	//Wait for char and report position back
+				hWaitForCharMotorPosition = GetProcAddress(hLib, "WaitForCharWithMotorPosition");	//Wait for char and report position back
 				hResetDriverFunctions = GetProcAddress(hLib, "ResetDriverFunctions");			//Reset Driver Functions				
 //				FreeLibrary(hLib);		//Release the driver so next calls dont increment reference thread number
 				return hLib;	//Return the handle to the driver

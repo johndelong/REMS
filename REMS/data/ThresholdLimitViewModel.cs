@@ -9,10 +9,10 @@ namespace REMS.data
     public class ThresholdLimitViewModel : ObservableObject, IComparable
     {
         //ThresholdLimit _limit;
-        string _frequency;
-        string _amplitude;
+        double _frequency;
+        double _amplitude;
 
-        public ThresholdLimitViewModel(string aFrequency = "0", string aAmplitude = "0")
+        public ThresholdLimitViewModel(double aFrequency = 0, double aAmplitude = 0)
         {
             //_limit = new ThresholdLimit { Frequency = aFrequency, Amplitude = aAmplitude };
 
@@ -26,7 +26,7 @@ namespace REMS.data
             set { _limit = value; }
         }*/
 
-        public string Frequency
+        public double Frequency
         {
             get { return _frequency; }
             set
@@ -36,7 +36,7 @@ namespace REMS.data
             }
         }
 
-        public string Amplitude
+        public double Amplitude
         {
             get { return _amplitude; }
             set
@@ -50,7 +50,7 @@ namespace REMS.data
         {
             ThresholdLimitViewModel a = this;
             ThresholdLimitViewModel b = (ThresholdLimitViewModel)o;
-            return Convert.ToInt32(a.Frequency).CompareTo(Convert.ToInt32(b.Frequency));
+            return a.Frequency.CompareTo(b.Frequency);
         }
     }
 }

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -75,11 +77,11 @@ namespace REMS.classes
         /// <param name="aPoint1"></param>
         /// <param name="aPoint2"></param>
         /// <returns></returns>
-        public static Point[] determineOpositeCorners(Point aPoint1, Point aPoint2)
+        public static System.Windows.Point[] determineOpositeCorners(System.Windows.Point aPoint1, System.Windows.Point aPoint2)
         {
-            Point topLeft = new Point();
-            Point bottomRight = new Point();
-            Point[] corners = new Point[2];
+            System.Windows.Point topLeft = new System.Windows.Point();
+            System.Windows.Point bottomRight = new System.Windows.Point();
+            System.Windows.Point[] corners = new System.Windows.Point[2];
 
             if (aPoint1.X < aPoint2.X && aPoint1.Y < aPoint2.Y) // top left to bottom right
             {
@@ -111,42 +113,44 @@ namespace REMS.classes
             return corners;
         }
 
-        public static void analyzeScannedData(int[] aCollectedData, double aMinFreq, double aMaxFreq, ThresholdViewModel aThreshold,
-            out Boolean aPassed, out int aValue)
+        public static void analyzeScannedData(double[] aCollectedData, double aMinFreq, double aMaxFreq, ThresholdViewModel aThreshold,
+            out Boolean aPassed, out double aValue)
         {
             aPassed = true; // Default to Passed;
             aValue = 0;
 
-            int lMinDifference;
+            Nullable<double> lMinDifference = null;
             double lStepSize = (aMaxFreq - aMinFreq) / aCollectedData.Count();
             double lCurrFreq = aMinFreq;
 
             if (aThreshold != null)
             {
-                lMinDifference = Convert.ToInt32(aThreshold.Limits[0].Amplitude);
-                foreach (int lAmplitude in aCollectedData) // number of data points collected
+                // Loop through all of the amplitudes of the collected data
+                foreach (double lCollectedAmplitude in aCollectedData) // number of data points collected
                 {
                     ThresholdLimitViewModel prevLimit = null;
+
+                    // Loop through all of the limits of the threshold
                     foreach (ThresholdLimitViewModel lLimit in aThreshold.Limits) // limits within this threshold
                     {
                         if (prevLimit == null)
                             prevLimit = lLimit;
 
-                        if (lCurrFreq > Convert.ToInt32(lLimit.Frequency))
+                        if (lCurrFreq > Convert.ToDouble(lLimit.Frequency))
                         {
                             prevLimit = lLimit;
                             continue;
                         }
 
                         // If we have gotten this far, we know we are comparing 
-                        //the data to the right threshold
-                        if (Convert.ToInt32(prevLimit.Amplitude) - lAmplitude < lMinDifference)
+                        //the data to the correct threshold
+                        if (Convert.ToDouble(prevLimit.Amplitude) + (lCollectedAmplitude * -1) < lMinDifference || lMinDifference == null)
                         {
-                            lMinDifference = Convert.ToInt32(prevLimit.Amplitude) - lAmplitude;
-                            aValue = lMinDifference * (-1);
+                            lMinDifference = Convert.ToDouble(prevLimit.Amplitude) + (lCollectedAmplitude * -1);
+                            aValue = (lMinDifference.Value * -1);
                         }
 
-                        if (lAmplitude > Convert.ToInt32(prevLimit.Amplitude))
+                        if (lCollectedAmplitude > Convert.ToInt32(prevLimit.Amplitude))
                         {
                             aThreshold.State = "Failed";
                             aPassed = false;
@@ -266,7 +270,7 @@ namespace REMS.classes
         /// <param name="aMouseDown"></param>
         /// <param name="aMouseUp"></param>
         /// <returns></returns>
-        public static ImageSource cropImage(Image aImage, Point aMouseDown, Point aMouseUp)
+        public static ImageSource cropImage(System.Windows.Controls.Image aImage, System.Windows.Point aMouseDown, System.Windows.Point aMouseUp)
         {
 
             // Convert selected coordinates to actual image coordinates
@@ -294,13 +298,13 @@ namespace REMS.classes
         /// <param name="aImage"></param>
         /// <param name="aLocation"></param>
         /// <returns></returns>
-        public static Point getAspectRatioPosition(Point aLocation, double aFromWidth, double aFromHeight, double aToWidth, double aToHeight)
+        public static System.Windows.Point getAspectRatioPosition(System.Windows.Point aLocation, double aFromWidth, double aFromHeight, double aToWidth, double aToHeight)
         {
             // Take current location and convert to actual image location
             Double dblXPos = (aLocation.X * aToWidth) / aFromWidth;
             Double dblYPos = (aLocation.Y * aToHeight) / aFromHeight;
 
-            return new Point(dblXPos, dblYPos);
+            return new System.Windows.Point(dblXPos, dblYPos);
         }
 
         public static void SaveToJPG(FrameworkElement visual, string fileName)
@@ -411,7 +415,7 @@ namespace REMS.classes
         /// <param name="y"></param>
         /// <param name="z"></param>
         /// <param name="data"></param>
-        public static void writeToFile(string aFileName, int x, int y, int z, int[] data)
+        public static void writeToFile(string aFileName, int x, int y, int z, double[] data)
         {
             //To append to file, set second argument of StreamWriter to true
             using (StreamWriter swLog = new StreamWriter(aFileName, true))
@@ -524,7 +528,7 @@ namespace REMS.classes
             int lStatus = 0;
 
             lStatus = Vxm.LoadDriver("VxmDriver.dll");
-            //Console.WriteLine("Loading Motor Driver: " + (lStatus == 1 ? "Success" : "Failed"));
+            Console.WriteLine("Loading Motor Driver: " + (lStatus == 1 ? "Success" : "Failed"));
 
             lStatus = Vxm.PortOpen(Properties.Settings.Default.MotorCommPort, 9600);
             Console.WriteLine("Connecting to Motors: " + (lStatus == 1 ? "Success" : "Failed"));
@@ -532,9 +536,11 @@ namespace REMS.classes
             if (lStatus == 1)
             {
                 _connected = true;
+                //Vxm.DriverTerminalShowState(1, 0);
+
             }
 
-            lStatus = Vxm.PortSendCommands("F,C,S1M4000,S2M4000,R");
+            
             Console.WriteLine("Speed of motors set to 4000 steps per second (20mm/s): " + (lStatus == 1 ? "Success" : "Failed"));
         }
 
@@ -545,7 +551,40 @@ namespace REMS.classes
             _connected = false;
 
             Vxm.ReleaseDriver();
-        } 
+        }
+
+        public void sendCommand(string aCommand)
+        {
+            if (_connected)
+            {
+                Vxm.PortSendCommands(aCommand);
+            }
+        }
+
+        public void decelerate()
+        {
+            if (_connected)
+            {
+                Vxm.PortSendCommands("D");
+            }
+        }
+
+        public void getPosition()
+        {
+            /*int lStatus = 0;
+            lStatus = Vxm.PortSendCommands("*");
+            
+            //Console.WriteLine(Vxm.PortWaitForCharWithMotorPosition());
+            Vxm.
+            Console.WriteLine("Motor 2 Pos: " + Vxm.PortReadReply());*/
+            //
+            //Vxm.PortWaitForChar("^", 0);
+            //Vxm.PortSendCommands("Y");
+            //System.Threading.Thread.Sleep(5000);
+            //Vxm.PortWaitForChar("", 0);
+            //string lReply = Vxm.PortReadReply();
+            //Console.WriteLine("Reply: " + lReply);
+        }
 
         public void move(int aXPos, int aYPos, int aZPos)
         {
@@ -558,7 +597,7 @@ namespace REMS.classes
                 string lZPos = Convert.ToString(aZPos * 200);
 
                 int lStatus = 0;
-                String lCommand = "F,C,(,IA1M" + lXPos + ",IA2M" + lYPos + ",),R";
+                String lCommand = "F,C,(IA3M" + lXPos + ",IA1M" + lYPos + ",IA2M" + lZPos + ",)R";
                 lStatus = Vxm.PortSendCommands(lCommand);
                 Console.WriteLine("Moving Motors: " + (lStatus == 1 ? "Success" : "Failed"));
 
@@ -566,18 +605,30 @@ namespace REMS.classes
             }
         }
 
+        public void stop()
+        {
+            Vxm.PortSendCommands("K");
+        }
+
         public void home()
         {
             if (_connected)
             {
                 int lStatus = 0;
-                lStatus = Vxm.PortSendCommands("F,C,(,I1M-0,I2M-0,),R");
-                Console.WriteLine("Homing Motors: " + (lStatus == 1 ? "Success" : "Failed"));
+                //lStatus = Vxm.PortSendCommands("F,C,S1M4000,S2M4000,R");
+                lStatus = Vxm.PortSendCommands("F,C,I2M-0,R");
+                Console.WriteLine("Homing Z: " + (lStatus == 1 ? "Success" : "Failed"));
+                Vxm.PortWaitForChar("^", 0);
+
+                lStatus = Vxm.PortSendCommands("F,C,(I3M-0,I1M-0,)R");
+                Console.WriteLine("Homing X & Y: " + (lStatus == 1 ? "Success" : "Failed"));
                 Vxm.PortWaitForChar("^", 0);
 
                 lStatus = Vxm.PortSendCommands("N");
                 Console.WriteLine("Update Home Position: " + (lStatus == 1 ? "Success" : "Failed"));
                 Vxm.PortWaitForChar("^", 0);
+
+                //lStatus = Vxm.PortSendCommands("F,C,S1M2000,S2M2000,R");
             }
         }
     }
@@ -609,7 +660,7 @@ namespace REMS.classes
                         for (int i = 1; i < lPairs.Length; i++)
                         {
                             string[] lTemp = lPairs[i].Split('|');
-                            lThreshold.Limits.Add(new ThresholdLimitViewModel(lTemp[0], lTemp[1]));
+                            lThreshold.Limits.Add(new ThresholdLimitViewModel(Convert.ToDouble(lTemp[0]), Convert.ToDouble(lTemp[1])));
                         }
 
                         lThresholds.Add(lThreshold);
@@ -662,11 +713,11 @@ namespace REMS.classes
         /// <param name="aHeight"></param>
         /// <param name="aColor"></param>
         /// <param name="aDashedLine"></param>
-        public static void Rectangle(Canvas aDrawingCanvas, double aX, double aY, double aWidth, double aHeight, Brush aColor, Boolean aDashedLine = false)
+        public static void Rectangle(Canvas aDrawingCanvas, double aX, double aY, double aWidth, double aHeight, System.Windows.Media.Brush aColor, Boolean aDashedLine = false)
         {
             try
             {
-                Shape Rendershape = new Rectangle();
+                Shape Rendershape = new System.Windows.Shapes.Rectangle();
                 Rendershape.Stroke = aColor;
                 Rendershape.StrokeThickness = 3;
 
@@ -689,16 +740,81 @@ namespace REMS.classes
         /// Draws a circle at a specific location
         /// </summary>
         /// <param name="aLocation"></param>
-        public static void Circle(Canvas aDrawingCanvas, Point aLocation)
+        public static void Circle(Canvas aDrawingCanvas, System.Windows.Point aLocation)
         {
             Shape Rendershape = new Ellipse() { Height = 20, Width = 20 };
-            Rendershape.Fill = Brushes.Blue;
+            Rendershape.Fill = System.Windows.Media.Brushes.Blue;
             Canvas.SetLeft(Rendershape, aLocation.X - 10);
             Canvas.SetTop(Rendershape, aLocation.Y - 10);
             aDrawingCanvas.Children.Add(Rendershape);
         }
-
     }
+
+    public class Analyzer
+    {
+        private ArrayList mFisheyeCorrect;
+        private int mFELimit = 1500;
+        private double mScaleFESize = 0.9;
+
+        public Analyzer()
+        {
+            //A lookup table so we don't have to calculate Rdistorted over and over
+            //The values will be multiplied by focal length in pixels to 
+            //get the Rdistorted
+            mFisheyeCorrect = new ArrayList(mFELimit);
+            //i corresponds to Rundist/focalLengthInPixels * 1000 (to get integers)
+            for (int i = 0; i < mFELimit; i++)
+            {
+                double result = Math.Sqrt(1 - 1 / Math.Sqrt(1.0 + (double)i * i / 1000000.0)) * 1.4142136;
+                mFisheyeCorrect.Add(result);
+            }
+        }
+
+        public Bitmap RemoveFisheye(ref Bitmap aImage, double aFocalLinPixels)
+        {
+            Bitmap correctedImage = new Bitmap(aImage.Width, aImage.Height);
+            //The center points of the image
+            double xc = aImage.Width / 2.0;
+            double yc = aImage.Height / 2.0;
+            Boolean xpos, ypos;
+            //Move through the pixels in the corrected image; 
+            //set to corresponding pixels in distorted image
+            for (int i = 0; i < correctedImage.Width; i++)
+            {
+                for (int j = 0; j < correctedImage.Height; j++)
+                {
+                    //which quadrant are we in?
+                    xpos = i > xc;
+                    ypos = j > yc;
+                    //Find the distance from the center
+                    double xdif = i - xc;
+                    double ydif = j - yc;
+                    //The distance squared
+                    double Rusquare = xdif * xdif + ydif * ydif;
+                    //the angle from the center
+                    double theta = Math.Atan2(ydif, xdif);
+                    //find index for lookup table
+                    int index = (int)(Math.Sqrt(Rusquare) / aFocalLinPixels * 1000);
+                    if (index >= mFELimit) index = mFELimit - 1;
+                    //calculated Rdistorted
+                    double Rd = aFocalLinPixels * (double)mFisheyeCorrect[index]
+                                          / mScaleFESize;
+                    //calculate x and y distances
+                    double xdelta = Math.Abs(Rd * Math.Cos(theta));
+                    double ydelta = Math.Abs(Rd * Math.Sin(theta));
+                    //convert to pixel coordinates
+                    int xd = (int)(xc + (xpos ? xdelta : -xdelta));
+                    int yd = (int)(yc + (ypos ? ydelta : -ydelta));
+                    xd = Math.Max(0, Math.Min(xd, aImage.Width - 1));
+                    yd = Math.Max(0, Math.Min(yd, aImage.Height - 1));
+                    //set the corrected pixel value from the distorted image
+                    correctedImage.SetPixel(i, j, aImage.GetPixel(xd, yd));
+                }
+            }
+            return correctedImage;
+        }
+    }
+
 
     /*
      * References
