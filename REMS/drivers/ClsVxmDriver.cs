@@ -1,6 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
-//using System.Windows.Forms;
+using System.Windows.Forms;
 
 public class ClsVxmDriver
 {
@@ -33,35 +33,47 @@ public class ClsVxmDriver
 
 	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int ShowTerminalSimple(int ParentHwnd);	// Show driver debug form 
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int HideTerminalSimple();	// Hide driver debug form 
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int OpenPort(int ComPortNumber, int ComPortBaudRate);		//Open Port
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int IsPortOpen();		//Is Port Open
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int ClosePort();		//Close Port
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int DriverSendToPort(string CommandOut);		//Send Commands to Vxm
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
-
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern string ReadFromPort();		//Read replies from Vxm
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 
+	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int CountCharsAtPort();		//Count number of chars at port waiting to be read
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int SearchForChars(string CharsToFind);		//Search for chars or string at the port
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int ClearPort();		//Clear the Port
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int RemoveFromPort(string StringToRemove);	//Remove certain chars from port
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern string GetMotorPosition(int MotorNumber);		//Get motor position
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int WaitForChar(string CharToWaitFor, int TimeOutTime);		//Wait for char
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern int WaitForCharWithMotorPosition(string CharToWaitFor, int MotorNumber, int ReportToWindowHwnd, int TimeOutTime);		//Wait for char, and report motor position while waiting
-	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
+	
+    [DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
 	private static extern void ResetDriverFunctions();		//Reset Driver Functions
 
 	[DllImport("VxmDriver.dll", CharSet=CharSet.Ansi, CallingConvention=CallingConvention.StdCall)]		//Import the driver
@@ -117,8 +129,8 @@ public class ClsVxmDriver
 				hGetMotorPosition = GetProcAddress(hLib, "GetMotorPosition");			//Get Motor Position
 				hWaitForChar = GetProcAddress(hLib, "WaitForChar");			//Wait for char
 				hWaitForCharMotorPosition = GetProcAddress(hLib, "WaitForCharWithMotorPosition");	//Wait for char and report position back
-				hResetDriverFunctions = GetProcAddress(hLib, "ResetDriverFunctions");			//Reset Driver Functions				
-//				FreeLibrary(hLib);		//Release the driver so next calls dont increment reference thread number
+                hResetDriverFunctions = GetProcAddress(hLib, "ResetDriverFunctions");			//Reset Driver Functions				
+				//FreeLibrary(hLib);		//Release the driver so next calls dont increment reference thread number
 				return hLib;	//Return the handle to the driver
 			}
 		}
@@ -141,7 +153,7 @@ public class ClsVxmDriver
 			long NumThreads;
 			NumThreads= GetThreadCountAmt();
 			for (int i = 1; i <= NumThreads; i++)
-			FreeLibrary(hLib);		//Release the driver //Still unknown why if called both in closing and closed routines, fixes crash error so call it twice
+			    FreeLibrary(hLib);		//Release the driver //Still unknown why if called both in closing and closed routines, fixes crash error so call it twice
 		}
 		return 1;
 	}

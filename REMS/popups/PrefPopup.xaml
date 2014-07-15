@@ -20,53 +20,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <GroupBox Grid.Row="0" Grid.Column="0" Header="Motor Travel Distance" HorizontalAlignment="Left">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
+                    
 
-                            </Grid.ColumnDefinitions>
-                            <Label Grid.Row="1" Grid.Column="0" Content="X Motor:" />
-                            <Label Grid.Row="2" Grid.Column="0" Content="Y Motor:" />
-                            <Label Grid.Row="3" Grid.Column="0" Content="Z Motor:" />
-
-                            <TextBox Name="tbXMotorTravelDistance" Grid.Row="1" Grid.Column="1" Width="60" Margin="3"
-                                     Text="{Binding ElementName=PopupWindow, Path=motorXTravelDistance, Mode=TwoWay}" />
-
-                            <TextBox Name="tbYMotorTravelDistance" Grid.Row="2" Grid.Column="1" Width="60" Margin="3"
-                                    Text="{Binding ElementName=PopupWindow, Path=motorYTravelDistance, Mode=TwoWay}" />
-
-                            <TextBox Name="tbZMotorTravelDistance" Grid.Row="3" Grid.Column="1" Width="60" Margin="3"
-                                    Text="{Binding ElementName=PopupWindow, Path=motorZTravelDistance, Mode=TwoWay}" />
-                        </Grid>
-                    </GroupBox>
-
-                    <GroupBox Grid.Row="0" Grid.Column="1" Header="Motor Travel Distance" HorizontalAlignment="Left">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-
-                            </Grid.ColumnDefinitions>
-                            <Label Grid.Row="0" Grid.Column="0" Content="VISA: " />
-
-                            <TextBox Name="tbSAConnectionString" Grid.Row="0" Grid.Column="1" Width="160" Margin="3"
-                                    Text="{Binding ElementName=PopupWindow, Path=saConnectionString, Mode=TwoWay}" />
-                        </Grid>
-                    </GroupBox>
+                    
 
 
                 </Grid>
@@ -144,7 +100,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <GroupBox Grid.Row="0" Grid.Column="0" Header="Frequency Range" HorizontalAlignment="Left">
+                    <GroupBox Grid.Row="1" Grid.Column="0" Header="Frequency Range" HorizontalAlignment="Left">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -155,14 +111,34 @@
                                 <ColumnDefinition Width="Auto" />
 
                             </Grid.ColumnDefinitions>
-                            <Label Grid.Row="0" Grid.Column="0" Content="Min:" />
-                            <Label Grid.Row="1" Grid.Column="0" Content="Max:" />
+                            <Label Grid.Row="0" Grid.Column="0" Content="Min (Hz):" />
+                            <Label Grid.Row="1" Grid.Column="0" Content="Max (Hz):" />
 
                             <TextBox Name="tbSAMinFreq" Grid.Row="0" Grid.Column="1" Width="60" Margin="3"
                                      Text="{Binding ElementName=PopupWindow, Path=SAMinFrequency, Mode=TwoWay}" />
                             
                             <TextBox Name="tbSAMaxFreq" Grid.Row="1" Grid.Column="1" Width="60" Margin="3"
                                     Text="{Binding ElementName=PopupWindow, Path=SAMaxFrequency, Mode=TwoWay}" />
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Width="360" Header="Connection String" HorizontalAlignment="Left">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="0" Grid.Column="0" Content="VISA: " />
+
+                            <TextBox Name="tbSAConnectionString" Grid.Row="0" Grid.Column="1" Width="300" Margin="3"
+                                    Text="{Binding ElementName=PopupWindow, Path=saConnectionString, Mode=TwoWay}" />
                         </Grid>
                     </GroupBox>
 
@@ -181,7 +157,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <GroupBox Grid.Row="0" Grid.Column="0" Header="Connnection" HorizontalAlignment="Left">
+                    <GroupBox Grid.Row="0" Grid.Column="0" Width="150" Header="Connnection" HorizontalAlignment="Left">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -194,10 +170,38 @@
                             </Grid.ColumnDefinitions>
                             <Label Grid.Row="0" Grid.Column="0" Content="Comm Port:" />
 
-                            <TextBox Name="tbMotorCommPort" Grid.Row="0" Grid.Column="1" Width="60" Margin="3"
+                            <TextBox Name="tbMotorCommPort" Grid.Row="0" Grid.Column="1" Width="40" Margin="3"
                                      Text="{Binding ElementName=PopupWindow, Path=MotorCommPort, Mode=TwoWay}" />
 
                             
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Grid.Row="1" Grid.Column="0" Width="150" Header="Motor Travel Distance" HorizontalAlignment="Left">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Row="1" Grid.Column="0" Content="X (mm):" />
+                            <Label Grid.Row="2" Grid.Column="0" Content="Y (mm):" />
+                            <Label Grid.Row="3" Grid.Column="0" Content="Z (mm):" />
+
+                            <TextBox Name="tbXMotorTravelDistance" Grid.Row="1" Grid.Column="1" Width="60" Margin="3"
+                                     Text="{Binding ElementName=PopupWindow, Path=motorXTravelDistance, Mode=TwoWay}" />
+
+                            <TextBox Name="tbYMotorTravelDistance" Grid.Row="2" Grid.Column="1" Width="60" Margin="3"
+                                    Text="{Binding ElementName=PopupWindow, Path=motorYTravelDistance, Mode=TwoWay}" />
+
+                            <TextBox Name="tbZMotorTravelDistance" Grid.Row="3" Grid.Column="1" Width="60" Margin="3"
+                                    Text="{Binding ElementName=PopupWindow, Path=motorZTravelDistance, Mode=TwoWay}" />
                         </Grid>
                     </GroupBox>
 

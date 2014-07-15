@@ -62,24 +62,12 @@ namespace REMS.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1")]
-        public int nsXStepSize {
+        public int nsXYStepSize {
             get {
-                return ((int)(this["nsXStepSize"]));
+                return ((int)(this["nsXYStepSize"]));
             }
             set {
-                this["nsXStepSize"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("1")]
-        public int nsYStepSize {
-            get {
-                return ((int)(this["nsYStepSize"]));
-            }
-            set {
-                this["nsYStepSize"] = value;
+                this["nsXYStepSize"] = value;
             }
         }
         
@@ -170,9 +158,9 @@ namespace REMS.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("6")]
-        public int SAMinFrequency {
+        public double SAMinFrequency {
             get {
-                return ((int)(this["SAMinFrequency"]));
+                return ((double)(this["SAMinFrequency"]));
             }
             set {
                 this["SAMinFrequency"] = value;
@@ -182,9 +170,9 @@ namespace REMS.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("100")]
-        public int SAMaxFrequency {
+        public double SAMaxFrequency {
             get {
-                return ((int)(this["SAMaxFrequency"]));
+                return ((double)(this["SAMaxFrequency"]));
             }
             set {
                 this["SAMaxFrequency"] = value;

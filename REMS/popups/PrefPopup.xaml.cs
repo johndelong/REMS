@@ -168,8 +168,8 @@ namespace REMS.popups
             Properties.Settings.Default.motorXTravelDistance = Convert.ToDouble(_motorXTravelDistance);
             Properties.Settings.Default.motorYTravelDistance = Convert.ToDouble(_motorYTravelDistance);
             Properties.Settings.Default.motorZTravelDistance = Convert.ToDouble(_motorZTravelDistance);
-            Properties.Settings.Default.SAMinFrequency = Convert.ToInt32(_SAMinFrequency);
-            Properties.Settings.Default.SAMaxFrequency = Convert.ToInt32(_SAMaxFrequency);
+            Properties.Settings.Default.SAMinFrequency = Convert.ToDouble(_SAMinFrequency);
+            Properties.Settings.Default.SAMaxFrequency = Convert.ToDouble(_SAMaxFrequency);
             Properties.Settings.Default.MotorCommPort = Convert.ToInt32(_MotorCommPort);
         }
 

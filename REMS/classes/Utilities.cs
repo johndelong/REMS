@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Windows;
+using System.Drawing.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -36,7 +37,8 @@ namespace REMS.classes
             Calibration,
             Stopped,
             Scanning,
-            Overview
+            Overview,
+            ProbeChange
         }
 
         public enum direction : int
@@ -228,18 +230,28 @@ namespace REMS.classes
         }
     }
 
-    public static class Imaging
+    public static class ImagingMinipulation
     {
         public static ImageSource openImageSource(string aFileName)
         {
-            //aImgSource = null;
-
             BitmapImage lImage = new BitmapImage(new Uri(aFileName));
             return ConvertBitmapTo96DPI(lImage);
-            //imageCaptured.Source = loadedImage;
-            //imageLoaded = true;
+        }
 
-            //canvasDrawing.Visibility = Visibility.Visible;
+        public static ImageSource openBitmap(Bitmap aBitmap)
+        {
+            using (MemoryStream memory = new MemoryStream())
+            {
+                aBitmap.Save(memory, ImageFormat.Png);
+                memory.Position = 0;
+                BitmapImage bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.StreamSource = memory;
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.EndInit();
+
+                return ConvertBitmapTo96DPI(bitmapImage);
+            }
         }
 
         /// <summary>
@@ -310,6 +322,7 @@ namespace REMS.classes
         public static void SaveToJPG(FrameworkElement visual, string fileName)
         {
             var encoder = new JpegBitmapEncoder();
+            visual.UpdateLayout();
             SaveUsingEncoder(visual, fileName, encoder);
         }
 
@@ -510,6 +523,7 @@ namespace REMS.classes
     public class Motor
     {
         private Boolean _connected = false;
+        private Boolean _wasHomed = false;
         private ClsVxmDriver Vxm;
 
         public Motor()
@@ -523,12 +537,18 @@ namespace REMS.classes
             set { _connected = value; }
         }
 
+        public Boolean wasHomed
+        {
+            get { return _wasHomed; }
+            set { _wasHomed = value; }
+        }
+
         public void connect()
         {
             int lStatus = 0;
 
             lStatus = Vxm.LoadDriver("VxmDriver.dll");
-            Console.WriteLine("Loading Motor Driver: " + (lStatus == 1 ? "Success" : "Failed"));
+            Console.WriteLine("Loading Motor Driver: " + (lStatus != 0 ? "Success" : "Failed"));
 
             lStatus = Vxm.PortOpen(Properties.Settings.Default.MotorCommPort, 9600);
             Console.WriteLine("Connecting to Motors: " + (lStatus == 1 ? "Success" : "Failed"));
@@ -537,7 +557,6 @@ namespace REMS.classes
             {
                 _connected = true;
                 //Vxm.DriverTerminalShowState(1, 0);
-
             }
 
             
@@ -546,7 +565,7 @@ namespace REMS.classes
 
         public void disconnect()
         {
-            Vxm.PortClose();
+            //Vxm.PortClose();
 
             _connected = false;
 
@@ -582,14 +601,18 @@ namespace REMS.classes
             //Vxm.PortSendCommands("Y");
             //System.Threading.Thread.Sleep(5000);
             //Vxm.PortWaitForChar("", 0);
-            //string lReply = Vxm.PortReadReply();
-            //Console.WriteLine("Reply: " + lReply);
+            string lReply = Vxm.PortReadReply();
+            Console.WriteLine("Reply: " + lReply);
         }
 
         public void move(int aXPos, int aYPos, int aZPos)
         {
             if (_connected)
             {
+                // if the motors have never been homed, do that now!
+                if (!_wasHomed)
+                    this.home();
+
                 // Since our motor step size is 0.005mm, we have to
                 // multiply our steps by 200
                 string lXPos = Convert.ToString(aXPos * 200);
@@ -614,6 +637,8 @@ namespace REMS.classes
         {
             if (_connected)
             {
+                _wasHomed = false;
+
                 int lStatus = 0;
                 //lStatus = Vxm.PortSendCommands("F,C,S1M4000,S2M4000,R");
                 lStatus = Vxm.PortSendCommands("F,C,I2M-0,R");
@@ -628,7 +653,7 @@ namespace REMS.classes
                 Console.WriteLine("Update Home Position: " + (lStatus == 1 ? "Success" : "Failed"));
                 Vxm.PortWaitForChar("^", 0);
 
-                //lStatus = Vxm.PortSendCommands("F,C,S1M2000,S2M2000,R");
+                _wasHomed = true;
             }
         }
     }

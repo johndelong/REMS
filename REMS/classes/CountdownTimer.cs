@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using System.Windows.Controls;
+using System.Diagnostics;
 
 namespace REMS.classes
 {
@@ -14,9 +15,10 @@ namespace REMS.classes
         private TextBlock _label;
 
         DispatcherTimer _timer = new DispatcherTimer();
+        Stopwatch _stopWatch = new Stopwatch();
         TimeSpan _time;
-        //int numOfScanPoints = 0;
-        //int pointsScanned = 0;
+        private int _pointsScanned = 0;
+        private TimeSpan _averageTime;
         
         public CountdownTimer(TextBlock aLabel, int aScanPoints)
         {
@@ -31,18 +33,33 @@ namespace REMS.classes
         public void Start()
         {
             _timer.Start();
-            Enabled = true;
         }
 
         public void Stop()
         {
             _timer.Stop();
-            Enabled = false;
+        }
+
+        public void pointScanned()
+        {
+            if (_stopWatch.IsRunning)
+            {
+                _stopWatch.Stop();
+
+                _averageTime = new TimeSpan((long)(_averageTime.Ticks * 0.8) + (long)(_stopWatch.ElapsedTicks * 0.2));
+            }
+            else
+            {
+                _averageTime = new TimeSpan(_stopWatch.ElapsedTicks);
+            }
+            _stopWatch.Reset();
+            _stopWatch.Start();
+            _pointsScanned++;
         }
 
         private void timer_tick(object sender, EventArgs e)
         {
-            _label.Text = _time.ToString("c");
+            _label.Text = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", _time.Days, _time.Hours, _time.Minutes, _time.Seconds);
 
             if (_time == TimeSpan.Zero)
             {
@@ -50,10 +67,10 @@ namespace REMS.classes
             }
             else
             {
-                _time = _time.Add(TimeSpan.FromSeconds(-1));
+                long lTicksRemaining = (_scanPoints - _pointsScanned) * _averageTime.Ticks;
+                Console.WriteLine("Average time: " + _averageTime.Seconds);
+                _time = new TimeSpan(lTicksRemaining);
             }
         }
-
-        public bool Enabled { get; set; }
     }
 }

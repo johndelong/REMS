@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ni="http://schemas.ni.com/controls/2009/xaml/presentation" 
         xmlns:p="clr-namespace:REMS.Properties"
+        xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
         Title="Radiative Emissions Measuring System" Height="600" MinHeight="600" Width="800" MinWidth="800"
         Closing="onClosing" Name="REMSWindow">
     
@@ -12,20 +13,20 @@
                 <MenuItem Header="_File">
                     <MenuItem Header="_New Scan" Name="btnNewScan" Click="click_newScan" />
                     <MenuItem Header="_Open" Name="btnOpen" Click="click_open"/>
-                    <!--<MenuItem Header="_Open Log File" Click="click_openLogFile"/>-->
                     <MenuItem Header="_Close" Name="btnClose" Click="btnClose_Click"/>
                     <MenuItem Header="_Save HeatMap" Name="btnSaveHeatMap" Click="click_saveHeatMapImage" />
                     <MenuItem Header="_Preferences" Name="btnPreferences" Click="click_preferences"/>
                     <MenuItem Header="_Exit"/>
                 </MenuItem>
                 <MenuItem Header="_Devices">
-                    <MenuItem Header="_Camera"/>
-                    <MenuItem Header="_Motor Controller"/>
-                    <MenuItem Header="_Spectrum Analyzer"/>
+                    <MenuItem Header="_Reconnect All" Click="click_reconnect"/>
+                    <MenuItem Header="_Change Probe" Name="btnChangeProbe" Click="click_changeProbe"/>
                 </MenuItem>
                 <MenuItem Header="_Tools">
-                    <MenuItem Header="_Capture Image" Name="btnCaptureImage" Click="click_capture_image"/>
                     <MenuItem Header="_Calibrate" Name="btnCalibrate" Click="click_calibrate"/>
+                    <MenuItem Header="_Camera" Name="btnCamera" Click="click_captureImage"/>
+                    <MenuItem Header="_Capture Image" Name="btnCaptureImage" Click="click_capture_image"/>
+                    
                 </MenuItem>
             </Menu>
 
@@ -35,14 +36,14 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="10" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="30" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="30" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="10" />
                                 <ColumnDefinition Width="80" />
                             </Grid.ColumnDefinitions>
                         </Grid>
@@ -51,26 +52,26 @@
                 <StatusBarItem>
                     <TextBlock Name="lblStatus" Text="Current instruction goes here" />
                 </StatusBarItem>
-                <Separator Grid.Column="1" />
+                <!--<Separator Grid.Column="1" Width="1" />
                 <StatusBarItem Grid.Column="2">
                     <TextBlock Text="X:" />
                 </StatusBarItem>
                 <StatusBarItem Grid.Column="3">
-                    <TextBlock Name="lblXPosition" Text="000" />
+                    <TextBlock Name="lblXPosition" Text="0" />
                 </StatusBarItem>
                 <StatusBarItem Grid.Column="4">
                     <TextBlock Text="Y:" />
                 </StatusBarItem>
                 <StatusBarItem Grid.Column="5">
-                    <TextBlock Name="lblYPosition" Text="000" />
+                    <TextBlock Name="lblYPosition" Text="0" />
                 </StatusBarItem>
                 <StatusBarItem Grid.Column="6">
                     <TextBlock Text="Z:" />
                 </StatusBarItem>
                 <StatusBarItem Grid.Column="7">
-                    <TextBlock Name="lblZPosition" Text="000" />
-                </StatusBarItem>
-                <Separator Grid.Column="8" />
+                    <TextBlock Name="lblZPosition" Text="0" />
+                </StatusBarItem>-->
+                <Separator Grid.Column="8" Width="1" />
                 <StatusBarItem Grid.Column="9" HorizontalAlignment="Center" >
                     <TextBlock Name="lblCDTimer" Text="00:00:00.00" />
                 </StatusBarItem>
@@ -87,8 +88,8 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="95" />
-                <ColumnDefinition Width="105" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="100" />
                 <ColumnDefinition Width="5*" />
             </Grid.ColumnDefinitions>
 
@@ -121,7 +122,7 @@
                 </Grid>
             </GroupBox>
 
-            <GroupBox Grid.Row="1" Grid.Column="0" Header="Step Size" Margin="3,0,0,0">
+            <GroupBox Grid.Row="1" Grid.Column="0" Header="Step Size (mm)" Margin="3,0,0,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -130,21 +131,18 @@
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="5*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <Label Content="X" Grid.Row="0" Grid.Column="0"   />
-                    <ni:NumericTextBoxInt32 Name="nsXStepSize" Grid.Row="0" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
+                    <Label Content="X/Y" Grid.Row="0" Grid.Column="0"   />
+                    <ni:NumericTextBoxInt32 Name="nsXYStepSize" Grid.Row="0" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="StepSizeValidator" />
 
-                    <Label Content="Y" Grid.Row="1" Grid.Column="0"   />
-                    <ni:NumericTextBoxInt32 Name="nsYStepSize" Grid.Row="1" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
-
-                    <Label Content="Z" Grid.Row="2" Grid.Column="0"   />
-                    <ni:NumericTextBoxInt32 Name="nsZStepSize" Grid.Row="2" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
+                    <Label Content="Z" Grid.Row="1" Grid.Column="0"   />
+                    <ni:NumericTextBoxInt32 Name="nsZStepSize" Grid.Row="1" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="StepSizeValidator" />
                 </Grid>
             </GroupBox>
 
-            <GroupBox Grid.Row="1" Grid.Column="1" Header="Z Scan Area" Margin="0,0,3,0" >
+            <GroupBox Grid.Row="1" Grid.Column="1" Header="Z Height (mm)" Margin="0,0,3,0" >
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -152,14 +150,14 @@
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="5*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <Label Content="Min" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left" />
-                    <ni:NumericTextBoxInt32 Name="nsZMin" Grid.Row="0" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
+                    <ni:NumericTextBoxInt32 Name="nsZMin" Grid.Row="0" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="ZLimitValidator" />
 
                     <Label Content="Max" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Left" />
-                    <ni:NumericTextBoxInt32 Name="nsZMax" Grid.Row="1" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="nsValidator" />
+                    <ni:NumericTextBoxInt32 Name="nsZMax" Grid.Row="1" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="ZLimitValidator" />
                 </Grid>
             </GroupBox>
             <GroupBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,0" Header="Heat Map Opacity" >
@@ -185,7 +183,7 @@
 
             <TabControl Name="Tabs" Grid.Row="0" Grid.Column="2" Grid.RowSpan="5">
                 <TabItem Header="Results" Name="ResultsTab">
-                    <Grid x:Name="gridResultsTab">
+                    <Grid x:Name="gridResultsTab" Background="AliceBlue">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="150" />
                             <ColumnDefinition Width="5*" />

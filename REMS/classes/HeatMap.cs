@@ -247,12 +247,14 @@ namespace REMS.classes
             {
                 if(lObj.GetType().Name == "Label")
                 {
-                    ((Label)lObj).Content = Convert.ToString(lCurrent);
+                    Label lLabel = ((Label)lObj);
+                    lLabel.Content = Convert.ToString(lCurrent);
                     lCurrent -= lStep;
                 }
             }
-      
 
+            // Resize the label column
+            ColorKey.ColumnDefinitions[1].Width = new GridLength(1, GridUnitType.Auto);
         }
 
         private class Pixel
