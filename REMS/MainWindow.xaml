@@ -18,15 +18,18 @@
                     <MenuItem Header="_Preferences" Name="btnPreferences" Click="click_preferences"/>
                     <MenuItem Header="_Exit"/>
                 </MenuItem>
-                <MenuItem Header="_Devices">
-                    <MenuItem Header="_Reconnect All" Click="click_reconnect"/>
+                <MenuItem Header="_Motor">
+                    
                     <MenuItem Header="_Change Probe" Name="btnChangeProbe" Click="click_changeProbe"/>
+                    <MenuItem Header="_Get Base Line" Name="btnBaseLine" Click="btnBaseLine_Click" />
+                    <MenuItem Header="_Home Motors" Name="btnHomeMotors" Click="btnHomeMotors_Click"/>
+                    
                 </MenuItem>
                 <MenuItem Header="_Tools">
                     <MenuItem Header="_Calibrate" Name="btnCalibrate" Click="click_calibrate"/>
-                    <MenuItem Header="_Camera" Name="btnCamera" Click="click_captureImage"/>
-                    <MenuItem Header="_Capture Image" Name="btnCaptureImage" Click="click_capture_image"/>
-                    
+                    <!--<MenuItem Header="_Camera" Name="btnCamera" Click="click_captureImage"/>-->
+                    <MenuItem Header="_Capture Image" Name="btnCaptureImage" Click="click_captureImage"/>
+                    <MenuItem Header="_Reconnect All" Click="click_reconnect"/>
                 </MenuItem>
             </Menu>
 
@@ -52,7 +55,7 @@
                 <StatusBarItem>
                     <TextBlock Name="lblStatus" Text="Current instruction goes here" />
                 </StatusBarItem>
-                <!--<Separator Grid.Column="1" Width="1" />
+                <Separator Grid.Column="1" Width="1" />
                 <StatusBarItem Grid.Column="2">
                     <TextBlock Text="X:" />
                 </StatusBarItem>
@@ -70,7 +73,7 @@
                 </StatusBarItem>
                 <StatusBarItem Grid.Column="7">
                     <TextBlock Name="lblZPosition" Text="0" />
-                </StatusBarItem>-->
+                </StatusBarItem>
                 <Separator Grid.Column="8" Width="1" />
                 <StatusBarItem Grid.Column="9" HorizontalAlignment="Center" >
                     <TextBlock Name="lblCDTimer" Text="00:00:00.00" />
@@ -93,7 +96,7 @@
                 <ColumnDefinition Width="5*" />
             </Grid.ColumnDefinitions>
 
-            <GroupBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,0" Header="Jog Controls">
+            <!--<GroupBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,0" Header="Jog Controls">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="5*" />
@@ -120,7 +123,7 @@
                         <Path Fill="Black" Data="M 0 0 L 0 12 L 6 6 Z" Height="32" Stretch="Fill" Width="32"/>
                     </Button>
                 </Grid>
-            </GroupBox>
+            </GroupBox>-->
 
             <GroupBox Grid.Row="1" Grid.Column="0" Header="Step Size (mm)" Margin="3,0,0,0">
                 <Grid>
@@ -160,6 +163,7 @@
                     <ni:NumericTextBoxInt32 Name="nsZMax" Grid.Row="1" Grid.Column="1" Width="50" Margin="3" HorizontalAlignment="Right" Interval="1" ValueChanged="ZLimitValidator" />
                 </Grid>
             </GroupBox>
+            
             <GroupBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,0" Header="Heat Map Opacity" >
                 <DockPanel VerticalAlignment="Top" >
                     <TextBlock Text="%" DockPanel.Dock="Right" />
@@ -169,6 +173,7 @@
                 </DockPanel>
 
             </GroupBox>
+            
 
 
 
@@ -247,7 +252,10 @@
                             </DataGrid.ItemContainerStyle>
                         </DataGrid>
 
-                        <ni:Graph Name="graph1" Margin="174,5,5,10" >
+                        <ni:Graph Name="graph1" Margin="174,5,5,10" DefaultInteraction="Pan" >
+                            <ni:Graph.Children>
+                                <ni:MultiPlotCursor />
+                            </ni:Graph.Children>
                             <ni:Graph.Plots>
                                 <ni:Plot Label="Data" Name="PlotData">
                                     <ni:LinePlotRenderer Stroke="Blue" />

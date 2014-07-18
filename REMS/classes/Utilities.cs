@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Threading;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -428,24 +429,38 @@ namespace REMS.classes
         /// <param name="y"></param>
         /// <param name="z"></param>
         /// <param name="data"></param>
-        public static void writeToFile(string aFileName, int x, int y, int z, double[] data)
+        public static void writeToFile(string aFileName, int x, int y, int z, int motorX, int motorY, double[] data)
         {
-            //To append to file, set second argument of StreamWriter to true
-            using (StreamWriter swLog = new StreamWriter(aFileName, true))
+            Boolean lFileOpened = false;
+
+            while (!lFileOpened)
             {
-                swLog.Write(x.ToString() + ",");
-                swLog.Write(y.ToString() + ",");
-                swLog.Write(z.ToString() + ",");
-
-                for (int i = 0; i < data.Length; i++)
+                try
                 {
-                    swLog.Write(data[i].ToString());
+                    //To append to file, set second argument of StreamWriter to true
+                    using (StreamWriter swLog = new StreamWriter(aFileName, true))
+                    {
+                        lFileOpened = true;
+                        swLog.Write(x.ToString() + ",");
+                        swLog.Write(y.ToString() + ",");
+                        swLog.Write(z.ToString() + ",");
 
-                    if (i + 1 < data.Length)
-                        swLog.Write(",");
+                        for (int i = 0; i < data.Length; i++)
+                        {
+                            swLog.Write(data[i].ToString());
+
+                            if (i + 1 < data.Length)
+                                swLog.Write(",");
+                        }
+
+                        swLog.Write("\r\n");
+                    }
                 }
-
-                swLog.Write("\r\n");
+                catch (IOException)
+                {
+                    // Wait before trying again
+                    Thread.Sleep(100);
+                }
             }
         }
 
@@ -457,16 +472,32 @@ namespace REMS.classes
         /// <returns></returns>
         public static string[] getLineFromFile(string aFileName, String aRow, String aCol, String aZPos)
         {
+            Boolean lFileOpened = false;
             string[] lResult = null;
-            using (StreamReader srLog = new StreamReader(aFileName))
+
+            while (!lFileOpened)
             {
-                while (srLog.Peek() >= 0)
+                try
                 {
-                    lResult = srLog.ReadLine().Split(',');
-                    if (lResult[0] == aRow && lResult[1] == aCol && lResult[2] == aZPos)
-                        break;
+                    using (StreamReader srLog = new StreamReader(aFileName))
+                    {
+                        lFileOpened = true;
+                        while (srLog.Peek() >= 0)
+                        {
+                            lResult = srLog.ReadLine().Split(',');
+                            if (lResult[0] == aRow && lResult[1] == aCol && lResult[2] == aZPos)
+                                break;
+                        }
+                    }
+                    
+                }
+                catch (IOException)
+                {
+                    // Wait before trying again
+                    Thread.Sleep(100);
                 }
             }
+
             return lResult;
         }
 
@@ -499,25 +530,7 @@ namespace REMS.classes
                 }
                 Console.Write('\n');
             }
-
-            /*if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                pictureBox1.Load(openFileDialog1.FileName);
-            }*/
         }
-
-        /*static string ReadLines(Stream source, Encoding encoding)
-        {
-            using (StreamReader reader = new StreamReader(source, encoding))
-            {
-                string line;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    return line;
-                }
-            }
-            return "";
-        }*/
     }
 
     public class Motor
@@ -559,7 +572,7 @@ namespace REMS.classes
                 //Vxm.DriverTerminalShowState(1, 0);
             }
 
-            
+
             Console.WriteLine("Speed of motors set to 4000 steps per second (20mm/s): " + (lStatus == 1 ? "Success" : "Failed"));
         }
 
@@ -663,7 +676,7 @@ namespace REMS.classes
         public static ObservableCollection<ThresholdViewModel> GetThresholds(String aFile = "Thresholds.csv")
         {
             ObservableCollection<ThresholdViewModel> lThresholds = new ObservableCollection<ThresholdViewModel>();
-            
+
             try
             {
                 if (!File.Exists(aFile))
@@ -691,7 +704,7 @@ namespace REMS.classes
                         lThresholds.Add(lThreshold);
                     }
                 }
-                
+
             }
             catch (Exception) { }
 
@@ -767,7 +780,7 @@ namespace REMS.classes
         /// <param name="aLocation"></param>
         public static void Circle(Canvas aDrawingCanvas, System.Windows.Point aLocation)
         {
-            Shape Rendershape = new Ellipse() { Height = 20, Width = 20 };
+            Shape Rendershape = new Ellipse() { Height = 10, Width = 10 };
             Rendershape.Fill = System.Windows.Media.Brushes.Blue;
             Canvas.SetLeft(Rendershape, aLocation.X - 10);
             Canvas.SetTop(Rendershape, aLocation.Y - 10);

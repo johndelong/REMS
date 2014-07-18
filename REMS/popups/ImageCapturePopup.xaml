@@ -3,10 +3,27 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ImageCapturePopup" Height="447.544" Width="574.608">
     <Grid>
-        <WindowsFormsHost Name="windowsFromsHost1" HorizontalAlignment="Left" Height="399" Margin="10,10,0,0" VerticalAlignment="Top" Width="428" RenderTransformOrigin="0.289,-0.411"/>
-        <Button Content="Device" HorizontalAlignment="Left" Margin="483,10,0,0" VerticalAlignment="Top" Width="75" Click="icImagingControl1_Load"/>
-        <Button Content="Capture" HorizontalAlignment="Left" Margin="483,64,0,0" VerticalAlignment="Top" Width="75" Click="click_capture"/>
-        <Button Content="Properties" HorizontalAlignment="Left" Margin="483,37,0,0" VerticalAlignment="Top" Width="75" Click="click_properties"/>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="5*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        
+        
+        <WindowsFormsHost Name="windowsFromsHost1" Grid.Column="0" SizeChanged="windowsFromsHost1_SizeChanged" />
+        
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Button Name="btnDevice" Content="Device" Grid.Row="0" Width="75" Click="icImagingControl1_Load"/>
+            <Button Name="btnCapture" Content="Capture" Grid.Row="1" Width="75" Click="click_capture"/>
+            <Button Name="btnProperties" Content="Properties" Grid.Row="2" Width="75" Click="click_properties"/>
+        </Grid>
+        
+        
 
     </Grid>
 </Window>

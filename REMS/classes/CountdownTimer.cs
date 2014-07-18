@@ -42,35 +42,35 @@ namespace REMS.classes
 
         public void pointScanned()
         {
+            _pointsScanned++;
+
             if (_stopWatch.IsRunning)
             {
-                _stopWatch.Stop();
-
-                _averageTime = new TimeSpan((long)(_averageTime.Ticks * 0.8) + (long)(_stopWatch.ElapsedTicks * 0.2));
+                _averageTime = new TimeSpan( _stopWatch.ElapsedTicks / _pointsScanned );
             }
             else
             {
-                _averageTime = new TimeSpan(_stopWatch.ElapsedTicks);
+                //_averageTime = new TimeSpan(_stopWatch.ElapsedTicks);
+                _stopWatch.Start();
             }
-            _stopWatch.Reset();
-            _stopWatch.Start();
-            _pointsScanned++;
         }
 
         private void timer_tick(object sender, EventArgs e)
         {
-            _label.Text = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", _time.Days, _time.Hours, _time.Minutes, _time.Seconds);
+            
 
-            if (_time == TimeSpan.Zero)
+            /*if (_time == TimeSpan.Zero)
             {
                 Stop();
             }
             else
-            {
+            {*/
                 long lTicksRemaining = (_scanPoints - _pointsScanned) * _averageTime.Ticks;
                 Console.WriteLine("Average time: " + _averageTime.Seconds);
                 _time = new TimeSpan(lTicksRemaining);
-            }
+            //}
+
+                _label.Text = _time.ToString("c");;
         }
     }
 }
