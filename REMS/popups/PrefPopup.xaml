@@ -8,25 +8,7 @@
 
     <Grid>
         <TabControl Margin="10,10,9.6,37">
-            <TabItem Header="General">
-                <Grid >
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    
-
-                    
-
-
-                </Grid>
-            </TabItem>
+            
             <TabItem Header="Thresholds">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -39,7 +21,8 @@
                     </Grid.ColumnDefinitions>
 
                     <DataGrid Name="gridThresholds" Grid.Row="0" Grid.Column="0" CanUserAddRows="False" IsReadOnly="False" 
-                              AutoGenerateColumns="False" RowHeaderWidth="0" >
+                              AutoGenerateColumns="False" RowHeaderWidth="0"
+                              SelectedCellsChanged="gridThresholds_SelectedCellsChanged">
                         
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding Name}" Header="Name" Width="5*" />
@@ -55,6 +38,7 @@
 
                     <DataGrid Name="gridThresholdLimits" Grid.Row="0" Grid.Column="1" CanUserAddRows="False"
                               AutoGenerateColumns="false" RowHeaderWidth="0" IsReadOnly="False"
+                              SelectedCellsChanged="gridThresholdLimits_SelectedCellsChanged"
                               ItemsSource="{Binding ElementName=gridThresholds, Path=SelectedItem.Limits}"
                               RowEditEnding="gridThresholdLimits_RowEditEnding">
                         
@@ -105,19 +89,26 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="60" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="190" />
 
                             </Grid.ColumnDefinitions>
-                            <Label Grid.Row="0" Grid.Column="0" Content="Min (Hz):" />
-                            <Label Grid.Row="1" Grid.Column="0" Content="Max (Hz):" />
 
-                            <TextBox Name="tbSAMinFreq" Grid.Row="0" Grid.Column="1" Width="60" Margin="3"
+                            <TextBlock Grid.Row="0" Grid.ColumnSpan="3" TextWrapping="Wrap" Height="Auto">
+                                    Caution: If frequency values are changed, a new base scan is required to give an accurage reading.
+                            </TextBlock>
+
+                            <Label Grid.Row="1" Grid.Column="0" Content="Min (Hz):" />
+                            <Label Grid.Row="2" Grid.Column="0" Content="Max (Hz):" />
+
+                            <TextBox Name="tbSAMinFreq" Grid.Row="1" Grid.Column="1" Width="Auto" Margin="3"
                                      Text="{Binding ElementName=PopupWindow, Path=SAMinFrequency, Mode=TwoWay}" />
                             
-                            <TextBox Name="tbSAMaxFreq" Grid.Row="1" Grid.Column="1" Width="60" Margin="3"
+                            <TextBox Name="tbSAMaxFreq" Grid.Row="2" Grid.Column="1" Width="Auto" Margin="3"
                                     Text="{Binding ElementName=PopupWindow, Path=SAMaxFrequency, Mode=TwoWay}" />
                         </Grid>
                     </GroupBox>
@@ -194,13 +185,13 @@
                             <Label Grid.Row="2" Grid.Column="0" Content="Y (mm):" />
                             <Label Grid.Row="3" Grid.Column="0" Content="Z (mm):" />
 
-                            <TextBox Name="tbXMotorTravelDistance" Grid.Row="1" Grid.Column="1" Width="60" Margin="3"
+                            <TextBox Name="tbXMotorTravelDistance" Grid.Row="1" Grid.Column="1" Width="80" Margin="3"
                                      Text="{Binding ElementName=PopupWindow, Path=motorXTravelDistance, Mode=TwoWay}" />
 
-                            <TextBox Name="tbYMotorTravelDistance" Grid.Row="2" Grid.Column="1" Width="60" Margin="3"
+                            <TextBox Name="tbYMotorTravelDistance" Grid.Row="2" Grid.Column="1" Width="80" Margin="3"
                                     Text="{Binding ElementName=PopupWindow, Path=motorYTravelDistance, Mode=TwoWay}" />
 
-                            <TextBox Name="tbZMotorTravelDistance" Grid.Row="3" Grid.Column="1" Width="60" Margin="3"
+                            <TextBox Name="tbZMotorTravelDistance" Grid.Row="3" Grid.Column="1" Width="80" Margin="3"
                                     Text="{Binding ElementName=PopupWindow, Path=motorZTravelDistance, Mode=TwoWay}" />
                         </Grid>
                     </GroupBox>

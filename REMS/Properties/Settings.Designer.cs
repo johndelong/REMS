@@ -202,5 +202,17 @@ namespace REMS.Properties {
                 this["SAConnectionString"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double[] BaseLine {
+            get {
+                return ((double[])(this["BaseLine"]));
+            }
+            set {
+                this["BaseLine"] = value;
+            }
+        }
     }
 }

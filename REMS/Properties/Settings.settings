@@ -47,5 +47,8 @@
     <Setting Name="SAConnectionString" Type="System.String" Scope="User">
       <Value Profile="(Default)">USB0::2391::65519::cn0743a182::0::INSTR</Value>
     </Setting>
+    <Setting Name="BaseLine" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -42,6 +42,10 @@ namespace REMS.popups
             InitializeComponent();
             _thresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
             gridThresholds.ItemsSource = _thresholds;
+
+            btnRemoveLimit.IsEnabled = false;
+            btnRemoveThreshold.IsEnabled = false;
+            btnAddLimit.IsEnabled = false;
         }
 
         private void click_addThreshold(object sender, RoutedEventArgs e)
@@ -216,6 +220,32 @@ namespace REMS.popups
                 Utilities.Sort<ThresholdLimitViewModel>(lThreshold.Limits);
             }
 
+        }
+
+        private void gridThresholdLimits_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
+            if (gridThresholdLimits.SelectedItem != null)
+            {
+                btnRemoveLimit.IsEnabled = true;
+            }
+            else
+            {
+                btnRemoveLimit.IsEnabled = false;
+            }
+        }
+
+        private void gridThresholds_SelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
+            if (gridThresholds.SelectedItem != null)
+            {
+                btnRemoveThreshold.IsEnabled = true;
+                btnAddLimit.IsEnabled = true;
+            }
+            else
+            {
+                btnRemoveThreshold.IsEnabled = false;
+                btnAddLimit.IsEnabled = false;
+            }
         }
     }
 }

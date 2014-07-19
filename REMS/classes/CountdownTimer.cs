@@ -19,7 +19,7 @@ namespace REMS.classes
         TimeSpan _time;
         private int _pointsScanned = 0;
         private TimeSpan _averageTime;
-        
+
         public CountdownTimer(TextBlock aLabel, int aScanPoints)
         {
             _label = aLabel;
@@ -46,31 +46,21 @@ namespace REMS.classes
 
             if (_stopWatch.IsRunning)
             {
-                _averageTime = new TimeSpan( _stopWatch.ElapsedTicks / _pointsScanned );
+                _averageTime = new TimeSpan(_stopWatch.ElapsedTicks / _pointsScanned);
             }
             else
             {
-                //_averageTime = new TimeSpan(_stopWatch.ElapsedTicks);
                 _stopWatch.Start();
             }
         }
 
         private void timer_tick(object sender, EventArgs e)
         {
-            
+            long lTicksRemaining = (_scanPoints - _pointsScanned) * _averageTime.Ticks;
+            Console.WriteLine("Points Remaining: " + (_scanPoints - _pointsScanned) + " | Average time (ms): " + _averageTime.Milliseconds);
+            _time = new TimeSpan(lTicksRemaining);
 
-            /*if (_time == TimeSpan.Zero)
-            {
-                Stop();
-            }
-            else
-            {*/
-                long lTicksRemaining = (_scanPoints - _pointsScanned) * _averageTime.Ticks;
-                Console.WriteLine("Average time: " + _averageTime.Seconds);
-                _time = new TimeSpan(lTicksRemaining);
-            //}
-
-                _label.Text = _time.ToString("c");;
+            _label.Text = _time.ToString("c"); ;
         }
     }
 }

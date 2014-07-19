@@ -533,11 +533,12 @@ namespace REMS.classes
         }
     }
 
-    public class Motor
+    /*public class Motor
     {
         private Boolean _connected = false;
         private Boolean _wasHomed = false;
-        private ClsVxmDriver Vxm;
+        private int _driverStatus = 0;
+        public ClsVxmDriver Vxm;
 
         public Motor()
         {
@@ -560,8 +561,17 @@ namespace REMS.classes
         {
             int lStatus = 0;
 
-            lStatus = Vxm.LoadDriver("VxmDriver.dll");
-            Console.WriteLine("Loading Motor Driver: " + (lStatus != 0 ? "Success" : "Failed"));
+            if (_driverStatus == 0)
+            {
+                _driverStatus = Vxm.LoadDriver("VxmDriver.dll");
+                Console.WriteLine("Loading Motor Driver: " + (_driverStatus != 0 ? "Success" : "Failed"));
+            }
+
+            if (Vxm.PortIsOpen() == 1)
+            {
+                Vxm.PortClear();
+                Vxm.PortClose();
+            }
 
             lStatus = Vxm.PortOpen(Properties.Settings.Default.MotorCommPort, 9600);
             Console.WriteLine("Connecting to Motors: " + (lStatus == 1 ? "Success" : "Failed"));
@@ -569,19 +579,20 @@ namespace REMS.classes
             if (lStatus == 1)
             {
                 _connected = true;
-                //Vxm.DriverTerminalShowState(1, 0);
+            }
+            else
+            {
+                _connected = false;
             }
 
-
-            Console.WriteLine("Speed of motors set to 4000 steps per second (20mm/s): " + (lStatus == 1 ? "Success" : "Failed"));
+            //Console.WriteLine("Speed of motors set to 4000 steps per second (20mm/s): " + (lStatus == 1 ? "Success" : "Failed"));
         }
 
         public void disconnect()
         {
-            //Vxm.PortClose();
-
             _connected = false;
 
+            // Close port and release driver
             Vxm.ReleaseDriver();
         }
 
@@ -603,15 +614,15 @@ namespace REMS.classes
 
         public void getPosition()
         {
-            /*int lStatus = 0;
+            int lStatus = 0;
             lStatus = Vxm.PortSendCommands("*");
             
             //Console.WriteLine(Vxm.PortWaitForCharWithMotorPosition());
             Vxm.
-            Console.WriteLine("Motor 2 Pos: " + Vxm.PortReadReply());*/
+            Console.WriteLine("Motor 2 Pos: " + Vxm.PortReadReply());
             //
             //Vxm.PortWaitForChar("^", 0);
-            //Vxm.PortSendCommands("Y");
+            Vxm.PortSendCommands("Y");
             //System.Threading.Thread.Sleep(5000);
             //Vxm.PortWaitForChar("", 0);
             string lReply = Vxm.PortReadReply();
@@ -620,6 +631,9 @@ namespace REMS.classes
 
         public void move(int aXPos, int aYPos, int aZPos)
         {
+            // DEBUGGING ONLY!
+            //_connected = true;
+
             if (_connected)
             {
                 // if the motors have never been homed, do that now!
@@ -638,6 +652,7 @@ namespace REMS.classes
                 Console.WriteLine("Moving Motors: " + (lStatus == 1 ? "Success" : "Failed"));
 
                 Vxm.PortWaitForChar("^", 0);
+                
             }
         }
 
@@ -656,20 +671,20 @@ namespace REMS.classes
                 //lStatus = Vxm.PortSendCommands("F,C,S1M4000,S2M4000,R");
                 lStatus = Vxm.PortSendCommands("F,C,I2M-0,R");
                 Console.WriteLine("Homing Z: " + (lStatus == 1 ? "Success" : "Failed"));
-                Vxm.PortWaitForChar("^", 0);
+                lStatus = Vxm.PortWaitForChar("^", 0);
 
                 lStatus = Vxm.PortSendCommands("F,C,(I3M-0,I1M-0,)R");
                 Console.WriteLine("Homing X & Y: " + (lStatus == 1 ? "Success" : "Failed"));
-                Vxm.PortWaitForChar("^", 0);
+                lStatus = Vxm.PortWaitForChar("^", 0);
 
                 lStatus = Vxm.PortSendCommands("N");
                 Console.WriteLine("Update Home Position: " + (lStatus == 1 ? "Success" : "Failed"));
-                Vxm.PortWaitForChar("^", 0);
+                lStatus = Vxm.PortWaitForChar("^", 0);
 
                 _wasHomed = true;
             }
         }
-    }
+    }*/
 
     public static class ExternalData
     {
@@ -835,8 +850,7 @@ namespace REMS.classes
                     int index = (int)(Math.Sqrt(Rusquare) / aFocalLinPixels * 1000);
                     if (index >= mFELimit) index = mFELimit - 1;
                     //calculated Rdistorted
-                    double Rd = aFocalLinPixels * (double)mFisheyeCorrect[index]
-                                          / mScaleFESize;
+                    double Rd = aFocalLinPixels * (double)mFisheyeCorrect[index] / mScaleFESize;
                     //calculate x and y distances
                     double xdelta = Math.Abs(Rd * Math.Cos(theta));
                     double ydelta = Math.Abs(Rd * Math.Sin(theta));

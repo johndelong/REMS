@@ -13,17 +13,14 @@
         
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="30"/>
             </Grid.RowDefinitions>
 
-            <Button Name="btnDevice" Content="Device" Grid.Row="0" Width="75" Click="icImagingControl1_Load"/>
-            <Button Name="btnCapture" Content="Capture" Grid.Row="1" Width="75" Click="click_capture"/>
-            <Button Name="btnProperties" Content="Properties" Grid.Row="2" Width="75" Click="click_properties"/>
+            <Button Name="btnDevice" Content="Device" Grid.Row="0" Height="22" Width="75" Click="icImagingControl1_Load"/>
+            <Button Name="btnProperties" Content="Properties" Grid.Row="1" Height="22" Width="75" Click="click_properties"/>
+            <Button Name="btnCapture" Content="Capture" Grid.Row="2" Height="22" Width="75" Click="click_capture"/>
         </Grid>
-        
-        
-
     </Grid>
 </Window>
