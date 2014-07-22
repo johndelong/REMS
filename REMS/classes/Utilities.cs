@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Threading;
 using System.Collections.Generic;
-using System.Drawing;
+//using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -80,11 +80,11 @@ namespace REMS.classes
         /// <param name="aPoint1"></param>
         /// <param name="aPoint2"></param>
         /// <returns></returns>
-        public static System.Windows.Point[] determineOpositeCorners(System.Windows.Point aPoint1, System.Windows.Point aPoint2)
+        public static Point[] determineOpositeCorners(Point aPoint1, Point aPoint2)
         {
-            System.Windows.Point topLeft = new System.Windows.Point();
-            System.Windows.Point bottomRight = new System.Windows.Point();
-            System.Windows.Point[] corners = new System.Windows.Point[2];
+            Point topLeft = new Point();
+            Point bottomRight = new Point();
+            Point[] corners = new Point[2];
 
             if (aPoint1.X < aPoint2.X && aPoint1.Y < aPoint2.Y) // top left to bottom right
             {
@@ -116,30 +116,29 @@ namespace REMS.classes
             return corners;
         }
 
-        public static void analyzeScannedData(double[] aCollectedData, double aMinFreq, double aMaxFreq, ThresholdViewModel aThreshold,
+        public static void analyzeScannedData(Point[] aCollectedData, ThresholdViewModel aThreshold, double aDistance,
             out Boolean aPassed, out double aValue)
         {
             aPassed = true; // Default to Passed;
             aValue = 0;
 
+            ThresholdViewModel lDerivedThreshold = Utilities.getDerivedThreshold(aThreshold, aDistance);
             Nullable<double> lMinDifference = null;
-            double lStepSize = (aMaxFreq - aMinFreq) / aCollectedData.Count();
-            double lCurrFreq = aMinFreq;
 
-            if (aThreshold != null)
+            if (lDerivedThreshold != null)
             {
                 // Loop through all of the amplitudes of the collected data
-                foreach (double lCollectedAmplitude in aCollectedData) // number of data points collected
+                foreach (Point lPoint in aCollectedData) // number of data points collected
                 {
                     ThresholdLimitViewModel prevLimit = null;
 
                     // Loop through all of the limits of the threshold
-                    foreach (ThresholdLimitViewModel lLimit in aThreshold.Limits) // limits within this threshold
+                    foreach (ThresholdLimitViewModel lLimit in lDerivedThreshold.Limits) // limits within this threshold
                     {
                         if (prevLimit == null)
                             prevLimit = lLimit;
 
-                        if (lCurrFreq > Convert.ToDouble(lLimit.Frequency))
+                        if (lPoint.X > Convert.ToDouble(lLimit.Frequency))
                         {
                             prevLimit = lLimit;
                             continue;
@@ -147,23 +146,34 @@ namespace REMS.classes
 
                         // If we have gotten this far, we know we are comparing 
                         //the data to the correct threshold
-                        if (Convert.ToDouble(prevLimit.Amplitude) + (lCollectedAmplitude * -1) < lMinDifference || lMinDifference == null)
+                        if (Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1) < lMinDifference || lMinDifference == null)
                         {
-                            lMinDifference = Convert.ToDouble(prevLimit.Amplitude) + (lCollectedAmplitude * -1);
+                            lMinDifference = Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1);
                             aValue = (lMinDifference.Value * -1);
                         }
 
-                        if (lCollectedAmplitude > Convert.ToInt32(prevLimit.Amplitude))
+                        if (lPoint.Y > Convert.ToInt32(prevLimit.Amplitude))
                         {
                             aThreshold.State = "Failed";
                             aPassed = false;
                             break;
                         }
                     }
-
-                    lCurrFreq += lStepSize;
                 }
             }
+        }
+
+        public static ThresholdViewModel getDerivedThreshold(ThresholdViewModel aThreshold, double aDistance)
+        {
+            ThresholdViewModel lNewThreshold = new ThresholdViewModel();
+            double lAmplitude;
+            foreach (ThresholdLimitViewModel lLimit in aThreshold.Limits)
+            {
+                lAmplitude = lLimit.Amplitude + 20 * Math.Log10(3 / (aDistance / 1000));
+                lNewThreshold.Limits.Add(new ThresholdLimitViewModel(lLimit.Frequency, lAmplitude)); 
+            }
+
+            return lNewThreshold;
         }
     }
 
@@ -239,7 +249,7 @@ namespace REMS.classes
             return ConvertBitmapTo96DPI(lImage);
         }
 
-        public static ImageSource openBitmap(Bitmap aBitmap)
+        public static ImageSource openBitmap(System.Drawing.Bitmap aBitmap)
         {
             using (MemoryStream memory = new MemoryStream())
             {
@@ -283,7 +293,7 @@ namespace REMS.classes
         /// <param name="aMouseDown"></param>
         /// <param name="aMouseUp"></param>
         /// <returns></returns>
-        public static ImageSource cropImage(System.Windows.Controls.Image aImage, System.Windows.Point aMouseDown, System.Windows.Point aMouseUp)
+        public static ImageSource cropImage(System.Windows.Controls.Image aImage, Point aMouseDown, Point aMouseUp)
         {
 
             // Convert selected coordinates to actual image coordinates
@@ -311,13 +321,13 @@ namespace REMS.classes
         /// <param name="aImage"></param>
         /// <param name="aLocation"></param>
         /// <returns></returns>
-        public static System.Windows.Point getAspectRatioPosition(System.Windows.Point aLocation, double aFromWidth, double aFromHeight, double aToWidth, double aToHeight)
+        public static Point getAspectRatioPosition(Point aLocation, double aFromWidth, double aFromHeight, double aToWidth, double aToHeight)
         {
             // Take current location and convert to actual image location
             Double dblXPos = (aLocation.X * aToWidth) / aFromWidth;
             Double dblYPos = (aLocation.Y * aToHeight) / aFromHeight;
 
-            return new System.Windows.Point(dblXPos, dblYPos);
+            return new Point(dblXPos, dblYPos);
         }
 
         public static void SaveToJPG(FrameworkElement visual, string fileName)
@@ -384,6 +394,7 @@ namespace REMS.classes
             ObservableCollection<ScanLevel> lScanLevels = new ObservableCollection<ScanLevel>();
             int lRows = 0;
             int lCols = 0;
+            Boolean lFirstLine = true;
             try
             {
                 using (StreamReader srLog = new StreamReader(aFileName))
@@ -391,11 +402,14 @@ namespace REMS.classes
                     while (srLog.Peek() >= 0)
                     {
                         lLine = srLog.ReadLine().Split(',');
-                        if (Convert.ToInt32(lLine[1]) > lRows)
-                            lRows = Convert.ToInt32(lLine[1]);
 
-                        if (Convert.ToInt32(lLine[0]) > lCols)
+                        if (lFirstLine)
+                        {
                             lCols = Convert.ToInt32(lLine[0]);
+                            lRows = Convert.ToInt32(lLine[1]);
+                            lFirstLine = false;
+                            continue;
+                        }
 
                         if (lScanLevels.Count() > 0)
                         {
@@ -409,7 +423,7 @@ namespace REMS.classes
                     }
                 }
                 aHeatMap.Clear(ColorKey);
-                aHeatMap.Create(lCols + 1, lRows + 1, ColorKey);
+                aHeatMap.Create(lCols, lRows, ColorKey);
                 aScanLevels.ItemsSource = lScanLevels;
             }
             catch (Exception)
@@ -429,7 +443,27 @@ namespace REMS.classes
         /// <param name="y"></param>
         /// <param name="z"></param>
         /// <param name="data"></param>
-        public static void writeToFile(string aFileName, int x, int y, int z, int motorX, int motorY, double[] data)
+        /// 
+
+        public static void initializeFile(string aFileName, int aCols, int aRows, int aXYPlanes)
+        {
+            try
+            {
+                //To append to file, set second argument of StreamWriter to true
+                using (StreamWriter swLog = new StreamWriter(aFileName, true))
+                {
+                    swLog.Write(aCols.ToString() + ",");
+                    swLog.Write(aRows.ToString() + ",");
+                    swLog.Write(aXYPlanes.ToString() + ",");
+                    swLog.Write("\r\n");
+                }
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        public static void writeToFile(string aFileName, int x, int y, int z, int motorX, int motorY, Point[] data)
         {
             Boolean lFileOpened = false;
 
@@ -447,7 +481,7 @@ namespace REMS.classes
 
                         for (int i = 0; i < data.Length; i++)
                         {
-                            swLog.Write(data[i].ToString());
+                            swLog.Write(data[i].X.ToString() + "|" + data[i].Y.ToString());
 
                             if (i + 1 < data.Length)
                                 swLog.Write(",");
@@ -793,12 +827,12 @@ namespace REMS.classes
         /// Draws a circle at a specific location
         /// </summary>
         /// <param name="aLocation"></param>
-        public static void Circle(Canvas aDrawingCanvas, System.Windows.Point aLocation)
+        public static void Circle(Canvas aDrawingCanvas, Point aLocation)
         {
             Shape Rendershape = new Ellipse() { Height = 10, Width = 10 };
             Rendershape.Fill = System.Windows.Media.Brushes.Blue;
-            Canvas.SetLeft(Rendershape, aLocation.X - 10);
-            Canvas.SetTop(Rendershape, aLocation.Y - 10);
+            Canvas.SetLeft(Rendershape, aLocation.X - 5);
+            Canvas.SetTop(Rendershape, aLocation.Y - 5);
             aDrawingCanvas.Children.Add(Rendershape);
         }
     }
@@ -823,9 +857,9 @@ namespace REMS.classes
             }
         }
 
-        public Bitmap RemoveFisheye(ref Bitmap aImage, double aFocalLinPixels)
+        public System.Drawing.Bitmap RemoveFisheye(ref System.Drawing.Bitmap aImage, double aFocalLinPixels)
         {
-            Bitmap correctedImage = new Bitmap(aImage.Width, aImage.Height);
+            System.Drawing.Bitmap correctedImage = new System.Drawing.Bitmap(aImage.Width, aImage.Height);
             //The center points of the image
             double xc = aImage.Width / 2.0;
             double yc = aImage.Height / 2.0;

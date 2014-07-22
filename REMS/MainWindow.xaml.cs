@@ -1,26 +1,15 @@
 ﻿using System;
-using System.Resources;
-using System.Diagnostics;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using NationalInstruments;
 using REMS.classes;
 using REMS.drivers;
 using REMS.popups;
 using REMS.data;
-using System.Windows.Threading;
 using NationalInstruments.Controls;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -39,7 +28,6 @@ namespace REMS
         // Calibration Variables
         private Point[] mImageCalibrationPoints = new Point[2]; // where actually on the image is the calibration points
         private Point[] mCanvasCalibrationPoints = new Point[2]; // where the user clicked on the canvas
-        //private Boolean mCalibrationSet = false;
         private int mCalibrationPoints = 0;
 
         // Scan area variables
@@ -51,6 +39,7 @@ namespace REMS
         private int mXScanPoints, mYScanPoints = 0;
         private int mTotalScanPoints = 0;
         private Boolean mHomeMotors = false;
+        private Boolean mMoveMotors = false;
 
         // Saved Setting Variables
         private double mMotorXTravelDistance;
@@ -61,7 +50,7 @@ namespace REMS
         private int mXYStepSize, mZStepSize, mZMin, mZMax;
 
         // Tread to control the 3rd party devices
-        private readonly BackgroundWorker worker = new BackgroundWorker();
+        private readonly BackgroundWorker mWorkerThread = new BackgroundWorker();
 
         // Mouse variables
         private bool mMouseDown = false; // Set to 'true' when mouse is held down.
@@ -72,7 +61,6 @@ namespace REMS
         private string mLogFileName;
 
         // Connected Devices
-        //private Motor mMotor;
         private MotorDriver mMotor;
         private agn934xni mScope;
 
@@ -86,6 +74,7 @@ namespace REMS
         private Constants.state mCurrentState, mPreviousState;
         private Constants.direction mVerticalScanDirection, mHorizontalScanDirection;
         private Boolean mScanFinished = false;
+        private Boolean mScanStarted = false;
         private CountdownTimer mCDTimer;
         private ImageSource mLoadedImage;
         private int mCurrentZScanIndex = 0; // Index for the Z scan level that is selected
@@ -104,15 +93,15 @@ namespace REMS
             drawThreshold((ThresholdViewModel)dgThresholds.SelectedItem);
 
             // Setup our worker to move the motors and collect data
-            worker.DoWork += worker_DoWork;
-            worker.RunWorkerCompleted += worker_RunWorkerCompleted;
-            worker.WorkerSupportsCancellation = true;
+            mWorkerThread.DoWork += worker_DoWork;
+            mWorkerThread.RunWorkerCompleted += worker_RunWorkerCompleted;
+            mWorkerThread.WorkerSupportsCancellation = true;
 
+            // Try to connect to the SA and motors
             establishConnections();
 
             // Start at the initial state
             transitionToState(Constants.state.Overview);
-            worker.RunWorkerAsync();
         }
 
         private void establishConnections()
@@ -121,17 +110,16 @@ namespace REMS
             if (mMotor == null)
                 mMotor = new MotorDriver();
 
-            mMotor.Connect("4");
-
-            if (mMotor.isConnected())
+            mMotor.Connect(Convert.ToString(Properties.Settings.Default.MotorCommPort));
+            if (mMotor.isOnline())
             {
                 lblMotorStatus.Content = "Connected";
-                lblMotorStatus.Background = new SolidColorBrush(Colors.Green);
+                lblMotorStatus.Background = Brushes.Green;
             }
             else
             {
                 lblMotorStatus.Content = "Not Connected";
-                lblMotorStatus.Background = new SolidColorBrush(Colors.Red);
+                lblMotorStatus.Background = Brushes.Red;
             }
 
             // Connect to the spectrum analyzer
@@ -156,27 +144,27 @@ namespace REMS
 
         private void worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            BackgroundWorker wk = sender as BackgroundWorker;
+            BackgroundWorker lWorker = sender as BackgroundWorker;
 
             // run all background tasks here
             if (mHomeMotors)
             {
                 mHomeMotors = false;
-                mMotorXPos = mMotorYPos = mMotorZPos = 0;
-                mMotor.home();
-                updateMotorPositionLabels();
+                moveMotors(0, 0, mMotorZTravelDistance);
+            }
+            else if (mMoveMotors)
+            {
+                mMoveMotors = false;
+                moveMotors(mMotorXPos, mMotorYPos, mMotorZPos);
             }
             else if (mCurrentState == Constants.state.Scanning)
             {
-                while (!mScanFinished)
+                while (!mScanFinished && !lWorker.CancellationPending)
                 {
-                    if (wk.CancellationPending)
-                    {
-                        break;
-                    }
+                    moveMotors(mMotorXPos, mMotorYPos, mMotorZPos);
 
-                    mMotor.move((int)mMotorXPos, (int)mMotorYPos, (int)(mMotorZTravelDistance - mMotorZPos));
-                    updateMotorPositionLabels();
+                    if (lWorker.CancellationPending)
+                        break;
 
                     getDataAtCurrentLocation();
 
@@ -188,34 +176,23 @@ namespace REMS
                 // If we have finished the scan, home the motors
                 if (mScanFinished)
                 {
-                    mMotorXPos = mMotorYPos = mMotorZPos = 0;
-                    mMotor.home();
-                    updateMotorPositionLabels();
+                    moveMotors(0, 0, mMotorZTravelDistance);
                 }
             }
             else if (mCurrentState == Constants.state.ProbeChange)
             {
-                mMotorXPos = (mMotorXTravelDistance / 2);
-                mMotorYPos = (mMotorYTravelDistance);
-                mMotorZPos = (mMotorZTravelDistance);
-                mMotor.move((int)mMotorXPos, (int)mMotorYPos, (int)mMotorZPos);
+                if (moveMotors((mMotorXTravelDistance / 2), mMotorYTravelDistance, 0))
+                {
+                    string messageBoxText = "1) Remove currently installed probe\n2) Install new probe\n3) Adjust probe to be 1 mm above table\n4) Click OK when ready";
+                    string caption = "Information";
+                    MessageBoxButton button = MessageBoxButton.OK;
+                    MessageBoxImage icon = MessageBoxImage.Information;
+                    MessageBox.Show(messageBoxText, caption, button, icon);
 
-                updateMotorPositionLabels();
-
-                string messageBoxText = "1) Remove currently installed probe\n2) Install new probe\n3) Adjust probe to be 1 mm above table\n4) Click OK when ready";
-                string caption = "Information";
-                MessageBoxButton button = MessageBoxButton.OK;
-                MessageBoxImage icon = MessageBoxImage.Information;
-                MessageBox.Show(messageBoxText, caption, button, icon);
-
-                mMotorXPos = mMotorYPos = mMotorZPos = 0;
-
-                mMotor.home();
-                updateMotorPositionLabels();
+                    moveMotors(0, 0, mMotorZTravelDistance);
+                }
             }
         }
-
-        
 
         private void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
@@ -229,6 +206,16 @@ namespace REMS
                 MessageBoxImage icon = MessageBoxImage.Information;
                 MessageBox.Show(messageBoxText, caption, button, icon);
             }
+            else if (mCurrentState == Constants.state.Scanning)
+            {
+                transitionToState(Constants.state.Stopped);
+            }
+            else if (mCurrentState == Constants.state.Stopped)
+            {
+                // only enable the resume button when this thread has finished
+                btnAccept.IsEnabled = true;
+                btnCancel.IsEnabled = true;
+            }
         }
 
         // select image to set scan area and zoom in on picture
@@ -241,42 +228,41 @@ namespace REMS
             if (lLine != null)
             {
                 int numberOfPoints = lLine.Length - 3;
-                double stepSize = (double)(mSAMaxFrequency - mSAMinFrequency) / (numberOfPoints);
-                double currFreq = mSAMinFrequency;
-
 
                 Point[] data = new Point[numberOfPoints];
-                //ChartCollection<double, double>[] = new ChartCollection<double, double>[numberOfPoints];
-
+                string[] lStrPoint;
 
                 for (int i = 0; i < numberOfPoints; i++)
                 {
-                    data[i] = new Point(currFreq, Convert.ToDouble(lLine[i + 3]));
+                    lStrPoint = lLine[i + 3].Split('|');
+                    data[i] = new Point(Convert.ToDouble(lStrPoint[0]), Convert.ToDouble(lStrPoint[1]));
 
-                    currFreq += stepSize;
                 }
 
                 graph1.Data[1] = data;
 
                 // Only show the section of the treshold that applies to the data collected
+                ThresholdViewModel lDerivedThreshold = Utilities.getDerivedThreshold(mSelectedThreshold, (double)(((ScanLevel)dgZScanPoints.SelectedItem).ZPos));
                 ThresholdViewModel lThresholdSection = new ThresholdViewModel();
+                lThresholdSection.Name = "Trimmed Threshold";
                 ThresholdLimitViewModel lPrevLimit = null;
-                foreach (ThresholdLimitViewModel lLimit in mSelectedThreshold.Limits)
+
+                foreach (ThresholdLimitViewModel lLimit in lDerivedThreshold.Limits)
                 {
                     if (lPrevLimit == null)
                         lPrevLimit = lLimit;
 
-                    if (lPrevLimit.Frequency < data[0].X && lLimit.Frequency > data[0].X)
+                    if (lPrevLimit.Frequency <= data[0].X && lLimit.Frequency >= data[0].X)
                     {
                         lThresholdSection.Limits.Add(new ThresholdLimitViewModel(data[0].X, lPrevLimit.Amplitude));
                     }
 
-                    if (lPrevLimit.Frequency < data[numberOfPoints - 1].X && lLimit.Frequency > data[numberOfPoints - 1].X)
+                    if (lPrevLimit.Frequency <= data[numberOfPoints - 1].X && lLimit.Frequency >= data[numberOfPoints - 1].X)
                     {
                         lThresholdSection.Limits.Add(new ThresholdLimitViewModel(data[numberOfPoints - 1].X, lPrevLimit.Amplitude));
                     }
 
-                    if (lLimit.Frequency > data[0].X && lLimit.Frequency < data[numberOfPoints - 1].X)
+                    if (lLimit.Frequency >= data[0].X && lLimit.Frequency <= data[numberOfPoints - 1].X)
                     {
                         lThresholdSection.Limits.Add(lLimit);
                     }
@@ -294,24 +280,32 @@ namespace REMS
 
         private void drawThreshold(ThresholdViewModel aThreshold)
         {
-            if (aThreshold != null)
+            try
             {
-                Point[] lThresholdLine = new Point[aThreshold.Limits.Count * 2 - 1];
-                int freq = Convert.ToInt32(aThreshold.Limits[0].Frequency);
-                int amp = Convert.ToInt32(aThreshold.Limits[0].Amplitude);
-                int pos = 0;
-                for (int i = 1; i < aThreshold.Limits.Count * 2; i++)
+                if (aThreshold != null)
                 {
-                    if (i % 2 == 0)
-                        freq = Convert.ToInt32(aThreshold.Limits[i / 2].Frequency);
-                    else
-                        amp = Convert.ToInt32(aThreshold.Limits[i / 2].Amplitude);
+                    if (aThreshold.Limits.Count != 0)
+                    {
+                        Point[] lThresholdLine = new Point[aThreshold.Limits.Count * 2 - 1];
+                        int freq = Convert.ToInt32(aThreshold.Limits[0].Frequency);
+                        int amp = Convert.ToInt32(aThreshold.Limits[0].Amplitude);
+                        int pos = 0;
+                        for (int i = 1; i < aThreshold.Limits.Count * 2; i++)
+                        {
+                            if (i % 2 == 0)
+                                freq = Convert.ToInt32(aThreshold.Limits[i / 2].Frequency);
+                            else
+                                amp = Convert.ToInt32(aThreshold.Limits[i / 2].Amplitude);
 
-                    lThresholdLine[pos] = new Point(freq, amp);
-                    pos++;
+                            lThresholdLine[pos] = new Point(freq, amp);
+                            pos++;
+                        }
+                        graph1.Data[0] = lThresholdLine;
+                    }
                 }
-                graph1.Data[0] = lThresholdLine;
             }
+            catch (Exception)
+            { }
         }
 
         private void transitionToState(Constants.state aState)
@@ -331,24 +325,26 @@ namespace REMS
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
 
-                    btnCalibrate.IsEnabled = true;
+                    //btnCalibrate.IsEnabled = true;
+                    btnHomeMotors.IsEnabled = true;
+                    btnBaseLine.IsEnabled = true;
+                    btnChangeProbe.IsEnabled = true;
+                    btnMoveTo.IsEnabled = true;
+                    btnPreferences.IsEnabled = true;
 
                     // Enable all GUI Controls
                     setGUIControlIsEnabled(true);
 
-                    btnCaptureImage.IsEnabled = true;
-
-                    mVerticalScanDirection = Constants.direction.South;
-                    mHorizontalScanDirection = Constants.direction.East;
-                    dgZScanPoints.ItemsSource = null;
-
+                    // Only remove the image if we are starting a new scan
                     if (mPreviousState == Constants.state.Overview)
                     {
                         // Remmove captured image and heat map
                         mLoadedImage = null;
+                        imageCaptured.Source = null;
                     }
 
                     mHeatMap.Clear(IntensityColorKeyGrid);
+                    dgZScanPoints.ItemsSource = null;
 
                     // Update Status
                     if (mLoadedImage == null)
@@ -377,6 +373,11 @@ namespace REMS
                     break;
 
                 case Constants.state.Calibration:
+                    btnHomeMotors.IsEnabled = false;
+                    btnBaseLine.IsEnabled = false;
+                    btnChangeProbe.IsEnabled = false;
+                    btnMoveTo.IsEnabled = false;
+
                     // Update Status
                     lblStatus.Text = Constants.StatusCalibration1;
 
@@ -396,12 +397,18 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = true;
 
+                    btnHomeMotors.IsEnabled = false;
+                    btnBaseLine.IsEnabled = false;
+                    btnChangeProbe.IsEnabled = false;
+                    btnMoveTo.IsEnabled = false;
+                    btnPreferences.IsEnabled = false;
+                    btnCalibrate.IsEnabled = false;
+
                     // Disable all GUI Controls
                     setGUIControlIsEnabled(false);
 
-                    btnPreferences.IsEnabled = false;
-
-                    btnCalibrate.IsEnabled = false;
+                    mScanFinished = false;
+                    mScanStarted = false;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusReady;
@@ -411,6 +418,11 @@ namespace REMS
 
                     // Set the area of where to scan
                     setScanArea();
+
+                    // Show reminder to SA
+                    MessageBox.Show("Reminder: Please finalize all spectrum analyzer settings now. (Press 'Enter' on the spectrum analyzer to release remote control)", 
+                        "Reminder", MessageBoxButton.OK, MessageBoxImage.Information);
+
                     break;
 
                 case Constants.state.Scanning:
@@ -423,17 +435,33 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = false;
 
-                    mScanFinished = false;
+                    btnHomeMotors.IsEnabled = false;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusScanning;
 
-                    // Hide drawing canvas
-                    canvasDrawing.Visibility = Visibility.Collapsed;
+                    // Initialize the file
+                    if (!mScanStarted)
+                    {
+                        Logger.initializeFile(mLogFileName + ".csv", mXScanPoints, mYScanPoints, mScans.Count);
+                        mScanStarted = true;
+                    }
 
                     // Start moving the motors
-                    while (worker.IsBusy);
-                    worker.RunWorkerAsync();
+                    try
+                    {
+                        mWorkerThread.RunWorkerAsync();
+                    }
+                    catch (Exception)
+                    {
+                        string messageBoxText = "Unable to start scanning due to another process that is already running. Please try again.";
+                        string caption = "Process already running";
+                        MessageBoxButton button = MessageBoxButton.OK;
+                        MessageBoxImage icon = MessageBoxImage.Error;
+                        MessageBoxResult rsltMessageBox = MessageBox.Show(messageBoxText, caption, button, icon);
+
+                        transitionToState(Constants.state.Stopped);
+                    }
 
                     mCDTimer.Start();
 
@@ -443,22 +471,26 @@ namespace REMS
                     // Update Buttons
                     btnCancel.Content = "Reset";
                     btnCancel.Background = null;
-                    btnCancel.IsEnabled = true;
 
                     btnAccept.Content = "Resume";
                     btnAccept.Background = Brushes.Green;
-                    btnAccept.IsEnabled = true;
+
+                    btnHomeMotors.IsEnabled = true;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusStopped;
 
-                    // Emergancy Stop
-                    mMotor.stop();
-
                     // Stop the simulator
-                    if (worker.IsBusy == true && worker.WorkerSupportsCancellation == true)
+                    if (mWorkerThread.IsBusy)
                     {
-                        worker.CancelAsync();
+                        btnCancel.IsEnabled = false;
+                        btnAccept.IsEnabled = false;
+                        mWorkerThread.CancelAsync();
+                    }
+                    else
+                    {
+                        btnCancel.IsEnabled = true;
+                        btnAccept.IsEnabled = true;
                     }
 
                     // Stop the count down timer
@@ -479,23 +511,36 @@ namespace REMS
                     // Update Status
                     lblStatus.Text = Constants.StatusOverview;
 
+                    btnBaseLine.IsEnabled = false;
+                    btnHomeMotors.IsEnabled = false;
+                    btnChangeProbe.IsEnabled = false;
+                    btnMoveTo.IsEnabled = false;
+                    btnPreferences.IsEnabled = true;
+
                     // Disable main gui buttons
                     setGUIControlIsEnabled(false);
 
+                    btnChangeProbe.IsEnabled = false;
+
                     // Disable Menu Items
                     btnCalibrate.IsEnabled = false;
-                    btnCaptureImage.IsEnabled = false;
 
                     if (mLoadedImage == null)
                         btnSaveHeatMap.IsEnabled = false;
                     else
                         btnSaveHeatMap.IsEnabled = true;
 
+                    mVerticalScanDirection = Constants.direction.South;
+                    mHorizontalScanDirection = Constants.direction.East;
+
                     canvasDrawing.Visibility = Visibility.Collapsed;
                     break;
 
                 case Constants.state.ProbeChange:
-                    worker.RunWorkerAsync();
+
+                    if (!mWorkerThread.IsBusy)
+                        mWorkerThread.RunWorkerAsync();
+
                     break;
             }
         }
@@ -541,18 +586,26 @@ namespace REMS
             {
                 transitionToState(Constants.state.Initial);
             }
+            else if (mCurrentState == Constants.state.Stopped)
+            {
+                transitionToState(Constants.state.Overview);
+
+                mHomeMotors = true;
+                mWorkerThread.RunWorkerAsync();
+            }
+
+            if (mMotor.isMoving)
+            {
+                mMotor.stop();
+
+                if (mWorkerThread.IsBusy)
+                {
+                    mWorkerThread.CancelAsync();
+                }
+            }
             else if (mCurrentState == Constants.state.Scanning)
             {
                 transitionToState(Constants.state.Stopped);
-            }
-            else if (mCurrentState == Constants.state.Stopped)
-            {
-                if (!worker.IsBusy)
-                {
-                    mHomeMotors = true;
-                    worker.RunWorkerAsync();
-                    transitionToState(Constants.state.Overview);
-                }
             }
         }
 
@@ -698,17 +751,25 @@ namespace REMS
 
         private void click_captureImage(object sender, RoutedEventArgs e)
         {
-            ImageCapturePopup popup = new ImageCapturePopup(testCallback);
-            popup.ShowDialog();
+            try
+            {
+                ImageCapturePopup popup = new ImageCapturePopup(gotImage_callback);
+                popup.ShowDialog();
+            }
+            catch (Exception)
+            {
+                string messageBoxText = "An error occured while trying to load the camera driver. Please confirm driver is installed correctly and try again.";
+                string caption = "Error";
+                MessageBoxButton button = MessageBoxButton.OK;
+                MessageBoxImage icon = MessageBoxImage.Error;
+                MessageBox.Show(messageBoxText, caption, button, icon);
+            }
         }
 
-        private void testCallback(System.Drawing.Bitmap aBitmap)
+        private void gotImage_callback(System.Drawing.Bitmap aBitmap)
         {
             if (aBitmap != null)
             {
-                //String lLabelStatus = lblStatus.Text;
-                //lblStatus.Text = "Removing fisheye. Please wait...";
-
                 try
                 {
                     Analyzer lAnalyzer = new Analyzer();
@@ -720,9 +781,22 @@ namespace REMS
                     lblStatus.Text = Constants.StatusInitial2;
                 }
                 catch (Exception) { }
-
-                //lblStatus.Text = lLabelStatus;
             }
+        }
+
+        private void click_MoveTo(object sender, RoutedEventArgs e)
+        {
+            MoveToPopup popup = new MoveToPopup(moveTo_callback);
+            popup.ShowDialog();
+        }
+
+        private void moveTo_callback(double X, double Y, double Z)
+        {
+            mMotorXPos = X;
+            mMotorYPos = Y;
+            mMotorZPos = Z;
+            mMoveMotors = true;
+            mWorkerThread.RunWorkerAsync();
         }
 
         private void click_heatMapMouseDown(object sender, MouseButtonEventArgs e)
@@ -972,13 +1046,10 @@ namespace REMS
                 canvasDrawing.Children.Clear();
 
                 mCanvasXYStepSize = (mCanvasCalibrationPoints[1].X - mCanvasCalibrationPoints[0].X) / mMotorXTravelDistance;
-                //mCanvasXYStepSize = (mCanvasCalibrationPoints[1].Y - mCanvasCalibrationPoints[0].Y) / mMotorYTravelDistance;
 
                 // Draw the table area
-                //if (mCalibrationSet)
-                //{
-                drawMotorTravelArea();
-                //}
+                if (mCurrentState != Constants.state.Calibration)
+                    drawMotorTravelArea();
             }
         }
 
@@ -1101,6 +1172,9 @@ namespace REMS
             mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).State = "In Progress";
 
             double[] lData = new double[461];
+            Point[] lFinalData = new Point[461];
+            double lStepSize = (mSAMaxFrequency - mSAMinFrequency) / 461;
+            double lCurrFreq = mSAMinFrequency;
             int lDataLen;
             int lStatus;
 
@@ -1116,14 +1190,16 @@ namespace REMS
                 // Convert to dbuv
                 for (int i = 0; i < lDataLen; i++)
                 {
-                    lData[i] += 107 - Properties.Settings.Default.BaseLine[i];
-                }   
+                    lData[i] += 107; //- Properties.Settings.Default.BaseLine[i];
+                    lFinalData[i] = new Point(lCurrFreq, lData[i]);
+                    lCurrFreq += lStepSize;
+                }
             }
 
-            Utilities.analyzeScannedData(lData, mSAMinFrequency, mSAMaxFrequency, mSelectedThreshold, out lPassed, out lMaxDifference);
-            
+            Utilities.analyzeScannedData(lFinalData, mSelectedThreshold, mMotorZPos, out lPassed, out lMaxDifference);
+
             // Save collected data
-            Logger.writeToFile(mLogFileName + ".csv", lCurrentCol, lCurrentRow, (int)mMotorZPos, (int)mMotorXPos, (int)mMotorYPos, lData);
+            Logger.writeToFile(mLogFileName + ".csv", lCurrentCol, lCurrentRow, (int)mMotorZPos, (int)mMotorXPos, (int)mMotorYPos, lFinalData);
 
             // draw heat map pixel
             if (mMotorZPos == mSelectedScanPoint.ZPos)
@@ -1223,13 +1299,11 @@ namespace REMS
             mSAMaxFrequency = Properties.Settings.Default.SAMaxFrequency;
 
             nsXYStepSize.Value = Properties.Settings.Default.nsXYStepSize;
-            //nsYStepSize.Value = Properties.Settings.Default.nsYStepSize;
             nsZStepSize.Value = Properties.Settings.Default.nsZStepSize;
             mZMin = Properties.Settings.Default.nsZMin;
             mZMax = Properties.Settings.Default.nsZMax;
             nsZMin.Value = mZMin;
             nsZMax.Value = mZMax;
-
         }
 
         private void saveUserPreferences()
@@ -1259,25 +1333,11 @@ namespace REMS
 
         private void setGUIControlIsEnabled(Boolean aIsEnabled)
         {
-            //btnMotorJogUp.IsEnabled = aIsEnabled;
-            //btnMotorJogDown.IsEnabled = aIsEnabled;
-            //btnMotorJogLeft.IsEnabled = aIsEnabled;
-            //btnMotorJogRight.IsEnabled = aIsEnabled;
-
+            btnCaptureImage.IsEnabled = aIsEnabled;
             nsXYStepSize.IsEnabled = aIsEnabled;
-            //nsYStepSize.IsEnabled = aIsEnabled;
             nsZStepSize.IsEnabled = aIsEnabled;
             nsZMax.IsEnabled = aIsEnabled;
             nsZMin.IsEnabled = aIsEnabled;
-        }
-
-        private void setNonScanningControlsIsEnabled(Boolean aIsEnabled)
-        {
-            menuTools.IsEnabled = aIsEnabled;
-            menuMotor.IsEnabled = aIsEnabled;
-
-            btnNewScan.IsEnabled = aIsEnabled;
-            btnClose.IsEnabled = aIsEnabled;
         }
 
         public void drawHeatMapFromFile(string aFileName, String aZPos)
@@ -1286,6 +1346,7 @@ namespace REMS
             string[] lLine = null;
             Boolean lFoundData = false;
             Boolean lPassed;
+            Boolean lFirstLine = true;
             double lValue;
             try
             {
@@ -1294,6 +1355,13 @@ namespace REMS
                     // Read the log file
                     while (srLog.Peek() >= 0)
                     {
+                        // Skip the header
+                        if (lFirstLine)
+                        {
+                            lFirstLine = false;
+                            continue;
+                        }
+
                         // Put the line into an array
                         lLine = srLog.ReadLine().Split(',');
 
@@ -1302,13 +1370,15 @@ namespace REMS
                         {
                             lFoundData = true;
                             // Extract the amplitude values from this line
-                            double[] lData = new double[lLine.Count() - 3];
+                            Point[] lData = new Point[lLine.Count() - 3];
+                            string[] lStrPoint;
                             for (int i = 0; i < lLine.Count() - 3; i++)
                             {
-                                lData[i] = Convert.ToDouble(lLine[i + 3]);
+                                lStrPoint = lLine[i + 3].Split('|');
+                                lData[i] = new Point(Convert.ToDouble(lStrPoint[0]), Convert.ToDouble(lStrPoint[1]));
                             }
 
-                            Utilities.analyzeScannedData(lData, mSAMinFrequency, mSAMaxFrequency, mSelectedThreshold, out lPassed, out lValue);
+                            Utilities.analyzeScannedData(lData, mSelectedThreshold, (double)(((ScanLevel)dgZScanPoints.SelectedItem).ZPos), out lPassed, out lValue);
 
                             mHeatMap.addIntensityPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), Convert.ToInt32(lValue));
                         }
@@ -1316,7 +1386,6 @@ namespace REMS
                             break;
                     }
                     mHeatMap.updateIntensityKey(IntensityColorKeyGrid);
-
                 }
             }
             catch (Exception)
@@ -1344,7 +1413,13 @@ namespace REMS
 
         private void btnClose_Click(object sender, RoutedEventArgs e)
         {
-            transitionToState(Constants.state.Initial);
+            // Clear all, then transition to the overview state
+            mLoadedImage = null;
+            imageCaptured.Source = null;
+            mHeatMap.Clear(IntensityColorKeyGrid);
+            dgZScanPoints.ItemsSource = null;
+
+            transitionToState(Constants.state.Overview);
         }
 
         /// <summary>
@@ -1426,7 +1501,7 @@ namespace REMS
         private void btnHomeMotors_Click(object sender, RoutedEventArgs e)
         {
             mHomeMotors = true;
-            worker.RunWorkerAsync();
+            mWorkerThread.RunWorkerAsync();
         }
 
         private void btnBaseLine_Click(object sender, RoutedEventArgs e)
@@ -1458,13 +1533,69 @@ namespace REMS
             this.Close();
         }
 
-        /*public void printDebug(String aString)
+        private Boolean moveMotors(double X, double Y, double Z)
         {
+            string lCancelContent = "Error";
+            Brush lCancelBackground = Brushes.Red;
+            Boolean lCancelIsEnabled = false;
+            Boolean lHomeMotorsIsEnabled = false;
+            Boolean lMoveMotorsIsEnabled = false;
+            Boolean lAcceptIsEnabled = false;
+            Boolean lChangeProbeIsEnabled = false;
+            Boolean lSuccess = false;
+
+            // Save button states and update values
             this.Dispatcher.Invoke((Action)(() =>
             {
-                //debug_out.AppendText(aString);
-                //debug_out.AppendText(Environment.NewLine);
+                lCancelContent = Convert.ToString(btnCancel.Content);
+                lCancelBackground = btnCancel.Background;
+                lCancelIsEnabled = btnCancel.IsEnabled;
+
+                lHomeMotorsIsEnabled = btnHomeMotors.IsEnabled;
+                lMoveMotorsIsEnabled = btnMoveTo.IsEnabled;
+                lAcceptIsEnabled = btnAccept.IsEnabled;
+                lChangeProbeIsEnabled = btnChangeProbe.IsEnabled;
+
+                btnCancel.Content = "Stop";
+                btnCancel.Background = Brushes.Red;
+                btnCancel.IsEnabled = true;
+
+                btnMoveTo.IsEnabled = false;
+                btnHomeMotors.IsEnabled = false;
+                btnAccept.IsEnabled = false;
+                btnChangeProbe.IsEnabled = false;
             }));
-        }*/
+
+            mMotorXPos = X;
+            mMotorYPos = Y;
+            mMotorZPos = Z;
+            updateMotorPositionLabels();
+
+            // Ready to move the motors
+            if (mMotor.isOnline())
+                lSuccess = mMotor.move((int)X, (int)Y, (int)(mMotorZTravelDistance - Z));
+            else
+            {
+                this.Dispatcher.Invoke((Action)(() =>
+                {
+                    lblMotorStatus.Content = "Not Connected";
+                    lblMotorStatus.Background = Brushes.Red;
+                }));
+            }
+
+            // Restore buttons to previous state
+            this.Dispatcher.Invoke((Action)(() =>
+            {
+                btnCancel.Content = lCancelContent;
+                btnCancel.Background = lCancelBackground;
+                btnCancel.IsEnabled = lCancelIsEnabled;
+                btnHomeMotors.IsEnabled = lHomeMotorsIsEnabled;
+                btnMoveTo.IsEnabled = lMoveMotorsIsEnabled;
+                btnAccept.IsEnabled = lAcceptIsEnabled;
+                btnChangeProbe.IsEnabled = lChangeProbeIsEnabled;
+            }));
+
+            return lSuccess;
+        }
     }
 }

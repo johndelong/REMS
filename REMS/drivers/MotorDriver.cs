@@ -14,14 +14,13 @@ namespace REMS.drivers
         private SerialPort serial = new SerialPort();
         private string recieved_data;
         private Boolean mWaitingForFinish = false;
-        //private Boolean mWaitingForReply = false;
+        private Boolean mStopped = false;
         private String mReply = "";
-        //private Boolean _connected = false;
-        private Boolean _wasHomed = false;
+        private Boolean mWasHomed = false;
 
         public MotorDriver()
         {
-
+            //mIsOnlineTimer = new DispatcherTimer();
         }
 
         public Boolean Connect(String aCOM)
@@ -41,11 +40,12 @@ namespace REMS.drivers
 
                 //Sets button State and Creates function call on data recieved
                 serial.DataReceived += new System.IO.Ports.SerialDataReceivedEventHandler(Recieve);
-                return false;
+
+                return true;
             }
             catch
             {
-                return true;
+                return false;
             }
         }
 
@@ -78,24 +78,20 @@ namespace REMS.drivers
             if (text == "^")
                 mWaitingForFinish = false;
 
-            //if (mWaitingForReply)
-            //{
-            //    mWaitingForReply = false;
             mReply = text;
-            //}
 
-            Console.WriteLine("Received: " + text);
+            //Console.WriteLine("Received: " + text);
         }
 
         public void WaitUntilFinished()
         {
             mWaitingForFinish = true;
-            while (mWaitingForFinish) ;
+            while (mWaitingForFinish && isOnline() && !mStopped) ;
         }
 
-        public string ReadReply()
+        public Boolean isMoving
         {
-            return mReply;
+            get { return mWaitingForFinish; }
         }
 
         public void sendCommand(string aCommand)
@@ -133,52 +129,84 @@ namespace REMS.drivers
             }
         }
 
-
-        public void home()
+        private void homeMotors()
         {
-            _wasHomed = false;
+            mWasHomed = false;
+            if (!mStopped)
+            {
+                sendCommand("F,C,I2M-0,R");
+                WaitUntilFinished();
+            }
 
-            int lStatus = 0;
-            sendCommand("F,C,I2M-0,R");
-            WaitUntilFinished();
+            if (!mStopped)
+            {
 
-            sendCommand("F,C,(I3M-0,I1M-0,)R");
-            WaitUntilFinished();
+                sendCommand("F,C,(I3M-0,I1M-0,)R");
+                WaitUntilFinished();
 
-            sendCommand("N");
-            Console.WriteLine("Update Home Position: " + (lStatus == 1 ? "Success" : "Failed"));
+                sendCommand("N");
 
-            _wasHomed = true;
+                mWasHomed = true;
+            }
         }
 
-        public void move(int aXPos, int aYPos, int aZPos)
+        public Boolean move(int aXPos, int aYPos, int aZPos)
         {
+            // if want to move the motors, we are going to assume that
+            // the motors shouldn't be stopped anymore
+            mStopped = false;
+
             // if the motors have never been homed, do that now!
-            if (!_wasHomed)
-                this.home();
+            if (!mWasHomed || (aXPos == 0 && aYPos == 0 && aZPos == 0))
+                this.homeMotors();
 
-            // Since our motor step size is 0.005mm, we have to
-            // multiply our steps by 200
-            string lXPos = Convert.ToString(aXPos * 200);
-            string lYPos = Convert.ToString(aYPos * 200);
-            string lZPos = Convert.ToString(aZPos * 200);
+            if (!mStopped)
+            {
+                // Since our motor step size is 0.005mm, we have to
+                // multiply our steps by 200 to get 1mm increments
+                string lXPos = Convert.ToString(aXPos * 200);
+                string lYPos = Convert.ToString(aYPos * 200);
+                string lZPos = Convert.ToString(aZPos * 200);
 
-            //int lStatus = 0;
-            String lCommand = "F,C,(IA3M" + lXPos + ",IA1M" + lYPos + ",IA2M" + lZPos + ",)R";
-            sendCommand(lCommand);
 
-            WaitUntilFinished();
+                String lCommand = "F,C,(IA3M" + lXPos + ",IA1M" + lYPos + ",IA2M" + lZPos + ",)R";
+                sendCommand(lCommand);
+
+                WaitUntilFinished();
+            }
+
+            return !mStopped;
         }
 
         public void stop()
         {
-            sendCommand("K");
+            // Don't need to wait for a response anymore
+            mWaitingForFinish = false;
+            mStopped = true;
+            sendCommand("D");
         }
 
-        public string getMotorStatus()
+        /*private void motorStatus_tick(object sender, EventArgs e)
         {
-            sendCommand("V");
-            return ReadReply();
+            getMotorStatus();
+        }*/
+
+        /*private void getMotorStatus()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                sendCommand("V");
+
+                Thread.Sleep(500);
+
+                Console.WriteLine((mReply == "") ? "Offline" : "Online");
+                mMotorsOnline = (mReply != "") ? true : false;
+            });
+        }*/
+
+        public Boolean isOnline()
+        {
+            return serial.IsOpen;
         }
     }
 }

@@ -11,16 +11,19 @@
         
         <WindowsFormsHost Name="windowsFromsHost1" Grid.Column="0" SizeChanged="windowsFromsHost1_SizeChanged" />
         
-        <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="30"/>
-                <RowDefinition Height="30"/>
-                <RowDefinition Height="30"/>
-            </Grid.RowDefinitions>
+        <GroupBox Grid.Column="1" Header="Controls" Height="100" VerticalAlignment="Top">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="25"/>
+                    <RowDefinition Height="25"/>
+                    <RowDefinition Height="25"/>
+                </Grid.RowDefinitions>
 
-            <Button Name="btnDevice" Content="Device" Grid.Row="0" Height="22" Width="75" Click="icImagingControl1_Load"/>
-            <Button Name="btnProperties" Content="Properties" Grid.Row="1" Height="22" Width="75" Click="click_properties"/>
-            <Button Name="btnCapture" Content="Capture" Grid.Row="2" Height="22" Width="75" Click="click_capture"/>
-        </Grid>
+                <Button Name="btnDevice" Content="Device" Grid.Row="0" Height="22" Width="75" Click="icImagingControl1_Load"/>
+                <Button Name="btnProperties" Content="Properties" Grid.Row="1" Height="22" Width="75" Click="click_properties"/>
+                <Button Name="btnCapture" Content="Capture" Grid.Row="2" Height="22" Width="75" Click="click_capture"/>
+            </Grid>
+        </GroupBox>
+        
     </Grid>
 </Window>

@@ -172,6 +172,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="popups\MoveToPopup.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="popups\PrefPopup.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -180,6 +184,9 @@
   <ItemGroup>
     <Compile Include="popups\ImageCapturePopup.xaml.cs">
       <DependentUpon>ImageCapturePopup.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="popups\MoveToPopup.xaml.cs">
+      <DependentUpon>MoveToPopup.xaml</DependentUpon>
     </Compile>
     <Compile Include="popups\PrefPopup.xaml.cs">
       <DependentUpon>PrefPopup.xaml</DependentUpon>

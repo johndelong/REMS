@@ -27,17 +27,18 @@ namespace REMS.classes
             _time = TimeSpan.FromSeconds(_scanPoints);
             _timer.Tick += new EventHandler(timer_tick);
             _timer.Interval = new TimeSpan(0, 0, 1);
-            _label.Text = _time.ToString("c");
         }
 
         public void Start()
         {
             _timer.Start();
+            _stopWatch.Start();
         }
 
         public void Stop()
         {
             _timer.Stop();
+            _stopWatch.Stop();
         }
 
         public void pointScanned()
@@ -48,10 +49,6 @@ namespace REMS.classes
             {
                 _averageTime = new TimeSpan(_stopWatch.ElapsedTicks / _pointsScanned);
             }
-            else
-            {
-                _stopWatch.Start();
-            }
         }
 
         private void timer_tick(object sender, EventArgs e)
@@ -60,7 +57,7 @@ namespace REMS.classes
             Console.WriteLine("Points Remaining: " + (_scanPoints - _pointsScanned) + " | Average time (ms): " + _averageTime.Milliseconds);
             _time = new TimeSpan(lTicksRemaining);
 
-            _label.Text = _time.ToString("c"); ;
+            _label.Text = _time.ToString(@"dd\:hh\:mm\.ss"); 
         }
     }
 }

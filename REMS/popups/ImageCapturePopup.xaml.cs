@@ -19,9 +19,8 @@ namespace REMS.popups
     /// </summary>
     public partial class ImageCapturePopup : Window
     {
-        //private TIS.Imaging.ICImagingControl icImagingControl1;
         private TIS.Imaging.ICImagingControl icImagingControl1 = new TIS.Imaging.ICImagingControl();
-        private delegate void DeviceLostDelegate();
+        //private delegate void DeviceLostDelegate();
         private Action<System.Drawing.Bitmap> callback;
         private System.Drawing.Bitmap mImageBitmap = null;
 
@@ -58,6 +57,7 @@ namespace REMS.popups
             {
                 StartLiveVideo();
                 btnCapture.IsEnabled = true;
+                fresh_imageSize();
             }
             else
             {
@@ -86,7 +86,6 @@ namespace REMS.popups
                 icImagingControl1.Device = "";
             }
             icImagingControl1.ShowDeviceSettingsDialog();
-            //cmdLive.Enabled = icImagingControl1.DeviceValid;
             btnProperties.IsEnabled = icImagingControl1.DeviceValid;
             if (icImagingControl1.DeviceValid)
             {
@@ -108,7 +107,6 @@ namespace REMS.popups
         private void StartLiveVideo()
         {
             icImagingControl1.LiveStart();
-            //cmdLive.Text = "Stop Live";
         }
 
         /// <summary>
@@ -117,7 +115,6 @@ namespace REMS.popups
         private void StopLiveVideo()
         {
             icImagingControl1.LiveStop();
-            //cmdLive.Text = "Start Live";
         }
 
         private void click_capture(object sender, EventArgs e)
@@ -141,6 +138,11 @@ namespace REMS.popups
         }
 
         private void windowsFromsHost1_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            fresh_imageSize();
+        }
+
+        private void fresh_imageSize()
         {
             if (icImagingControl1.DeviceValid)
             {
