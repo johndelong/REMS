@@ -449,6 +449,8 @@ namespace REMS.classes
         {
             try
             {
+                System.IO.File.WriteAllText(aFileName, string.Empty);
+
                 //To append to file, set second argument of StreamWriter to true
                 using (StreamWriter swLog = new StreamWriter(aFileName, true))
                 {
@@ -521,6 +523,8 @@ namespace REMS.classes
                             lResult = srLog.ReadLine().Split(',');
                             if (lResult[0] == aRow && lResult[1] == aCol && lResult[2] == aZPos)
                                 break;
+                            else
+                                lResult = null;
                         }
                     }
                     

@@ -27,6 +27,9 @@ namespace REMS.drivers
         {
             try
             {
+                if (serial != null)
+                    serial.Close();
+
                 //Sets up serial port
                 serial.PortName = "COM" + aCOM;
                 serial.BaudRate = 9600;
@@ -43,8 +46,10 @@ namespace REMS.drivers
 
                 return true;
             }
-            catch
+            catch(Exception e)
             {
+
+                Console.WriteLine(e);
                 return false;
             }
         }
@@ -140,12 +145,14 @@ namespace REMS.drivers
 
             if (!mStopped)
             {
-
                 sendCommand("F,C,(I3M-0,I1M-0,)R");
                 WaitUntilFinished();
 
                 sendCommand("N");
+            }
 
+            if (!mStopped)
+            {
                 mWasHomed = true;
             }
         }

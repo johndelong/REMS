@@ -41,27 +41,28 @@ namespace REMS.popups
             try
             {
                 icImagingControl1.LoadDeviceStateFromFile("device.xml", true);
+
+                btnProperties.IsEnabled = icImagingControl1.DeviceValid;
+
+                icImagingControl1.LiveDisplayDefault = false;
+                icImagingControl1.LiveDisplayHeight = icImagingControl1.Height;
+                icImagingControl1.LiveDisplayWidth = icImagingControl1.Width;
+
+                if (icImagingControl1.DeviceValid)
+                {
+                    StartLiveVideo();
+                    btnCapture.IsEnabled = true;
+                    fresh_imageSize();
+                }
+                else
+                {
+                    btnCapture.IsEnabled = false;
+                }
             }
             catch
             {
                 // Either the xml file does not exist or the device
                 // could not be loaded. In both cases we do nothing and proceed.
-            }
-            btnProperties.IsEnabled = icImagingControl1.DeviceValid;
-
-            icImagingControl1.LiveDisplayDefault = false;
-            icImagingControl1.LiveDisplayHeight = icImagingControl1.Height;
-            icImagingControl1.LiveDisplayWidth = icImagingControl1.Width;
-
-            if (icImagingControl1.DeviceValid)
-            {
-                StartLiveVideo();
-                btnCapture.IsEnabled = true;
-                fresh_imageSize();
-            }
-            else
-            {
-                btnCapture.IsEnabled = false;
             }
         }
 

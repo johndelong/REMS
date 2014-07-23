@@ -149,8 +149,19 @@ namespace REMS
             // run all background tasks here
             if (mHomeMotors)
             {
+                double lPrevXPos = mMotorXPos;
+                double lPrevYPos = mMotorYPos;
+                double lPrevZPos = mMotorZPos;
+                
                 mHomeMotors = false;
                 moveMotors(0, 0, mMotorZTravelDistance);
+
+                if (mCurrentState == Constants.state.Stopped)
+                {
+                    mMotorXPos = lPrevXPos;
+                    mMotorYPos = lPrevYPos;
+                    mMotorZPos = lPrevZPos;
+                }
             }
             else if (mMoveMotors)
             {
@@ -377,6 +388,7 @@ namespace REMS
                     btnBaseLine.IsEnabled = false;
                     btnChangeProbe.IsEnabled = false;
                     btnMoveTo.IsEnabled = false;
+                    btnCancel.IsEnabled = true;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusCalibration1;
@@ -578,7 +590,20 @@ namespace REMS
         /// <param name="e"></param>
         private void click_cancel(object sender, RoutedEventArgs e)
         {
-            if (mCurrentState == Constants.state.Calibration)
+            if (mMotor.isMoving)
+            {
+                mMotor.stop();
+
+                if (mWorkerThread.IsBusy)
+                {
+                    mWorkerThread.CancelAsync();
+                }
+            }
+            else if (mCurrentState == Constants.state.Scanning)
+            {
+                transitionToState(Constants.state.Stopped);
+            }
+            else if (mCurrentState == Constants.state.Calibration)
             {
                 transitionToState(Constants.state.Initial);
             }
@@ -594,19 +619,7 @@ namespace REMS
                 mWorkerThread.RunWorkerAsync();
             }
 
-            if (mMotor.isMoving)
-            {
-                mMotor.stop();
-
-                if (mWorkerThread.IsBusy)
-                {
-                    mWorkerThread.CancelAsync();
-                }
-            }
-            else if (mCurrentState == Constants.state.Scanning)
-            {
-                transitionToState(Constants.state.Stopped);
-            }
+            
         }
 
         /// <summary>
@@ -880,6 +893,7 @@ namespace REMS
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
             mCanvasMouseDownPos = e.GetPosition(canvasDrawing);
+            mCanvasMouseUpPos = mCanvasMouseDownPos;
             double lx = (mCanvasMouseDownPos.X - mCanvasCalibrationPoints[0].X) / mCanvasXYStepSize;
             double ly = (mCanvasMouseDownPos.Y - mCanvasCalibrationPoints[0].Y) / mCanvasXYStepSize;
             Console.WriteLine("Position: " + lx + "," + ly);
@@ -952,10 +966,14 @@ namespace REMS
                 {
                     mMouseDown = false;
 
-                    if (mCanvasMouseDownPos.X != mCanvasMouseUpPos.X && mCanvasMouseDownPos.Y != mCanvasMouseUpPos.Y)
+                    if (Math.Round(Math.Abs(mCanvasMouseUpPos.X - mCanvasMouseDownPos.X)) >= (mXYStepSize * mCanvasXYStepSize) && 
+                        Math.Round(Math.Abs(mCanvasMouseUpPos.Y - mCanvasMouseDownPos.Y)) >= (mXYStepSize * mCanvasXYStepSize))
                     {
                         mScanAreaIsSet = true;
-                        btnAccept.IsEnabled = true;
+                        
+                        if(!mWorkerThread.IsBusy)
+                            btnAccept.IsEnabled = true;
+                        
                         lblStatus.Text = Constants.StatusInitial3;
                     }
                     else
@@ -1002,12 +1020,14 @@ namespace REMS
                     Canvas.SetLeft(selectionBox, mCanvasMouseDownPos.X);
                     selectionBox.Width = lNextXDistance * mCanvasXYStepSize;
                     mCanvasMouseUpPos.X = mCanvasMouseDownPos.X + lNextXDistance * mCanvasXYStepSize;
+                    Console.WriteLine("Width: " + (mCanvasMouseUpPos.X - mCanvasMouseDownPos.X));
                 }
                 else
                 {
                     Canvas.SetLeft(selectionBox, mCanvasMouseDownPos.X - (lNextXDistance * mCanvasXYStepSize));
                     selectionBox.Width = lNextXDistance * mCanvasXYStepSize;
                     mCanvasMouseUpPos.X = mCanvasMouseDownPos.X - lNextXDistance * mCanvasXYStepSize;
+                    Console.WriteLine("Width: " + (mCanvasMouseUpPos.X - mCanvasMouseDownPos.X));
                 }
 
                 if (mCanvasMouseDownPos.Y < lCanvasMousePos.Y)
@@ -1591,7 +1611,17 @@ namespace REMS
                 btnCancel.IsEnabled = lCancelIsEnabled;
                 btnHomeMotors.IsEnabled = lHomeMotorsIsEnabled;
                 btnMoveTo.IsEnabled = lMoveMotorsIsEnabled;
-                btnAccept.IsEnabled = lAcceptIsEnabled;
+
+                if (mCurrentState == Constants.state.Initial)
+                {
+                    if (mScanAreaIsSet)
+                        btnAccept.IsEnabled = true;
+                    else
+                        btnAccept.IsEnabled = false;
+                }
+                else
+                    btnAccept.IsEnabled = lAcceptIsEnabled;
+                
                 btnChangeProbe.IsEnabled = lChangeProbeIsEnabled;
             }));
 
