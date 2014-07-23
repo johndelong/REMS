@@ -26,8 +26,8 @@
                 </MenuItem>
                 <MenuItem Header="_Tools" Name="menuTools">
                     <MenuItem Header="_Calibrate" Name="btnCalibrate" Click="click_calibrate"/>
-                    <MenuItem Header="_Debug Capture" Name="btnCamera" Click="click_capture_image"/>
-                    <MenuItem Header="_Reconnect All" Click="click_reconnect"/>
+                    <!--<MenuItem Header="_Debug Capture" Name="btnCamera" Click="click_capture_image"/>-->
+                    <MenuItem Name="btnReconnect" Header="_Reconnect All" Click="click_reconnect"/>
                 </MenuItem>
             </Menu>
 
@@ -181,11 +181,11 @@
                 <!--<TextBox Name="debug_out" Grid.ColumnSpan="2" HorizontalAlignment="Left" Height="262" Margin="10,9.6,0,0" Grid.Row="2" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="180"/>-->
             </Grid>
 
-            <TabControl Name="Tabs" Grid.Row="0" Grid.Column="2" Grid.RowSpan="5">
+            <TabControl Name="Tabs" Grid.Row="0" Grid.Column="2" Grid.RowSpan="5" SelectionChanged="Tabs_SelectionChanged">
                 <TabItem Header="Results" Name="ResultsTab">
                     <Grid x:Name="gridResultsTab" Background="AliceBlue">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="200" />
                             <ColumnDefinition Width="5*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
@@ -194,8 +194,9 @@
                                   AutoGenerateColumns="false"
                                   IsReadOnly="True" RowHeaderWidth="0" SelectedCellsChanged="dgZScanPoints_SelectedCellsChanged">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Binding="{Binding ZPos}" Header="Z Pos" Width="5*"/>
-                                <DataGridTextColumn Binding="{Binding State}" Header="State" Width="5*"/>
+                                <DataGridTextColumn Binding="{Binding ZPos}" Header="Z Pos" Width="50"/>
+                                <DataGridTextColumn Binding="{Binding ScanState}" Header="Scan State" Width="5*"/>
+                                <DataGridTextColumn Binding="{Binding pfState}" Header="Result" Width="5*"/>
                             </DataGrid.Columns>
 
                             <DataGrid.ItemContainerStyle>
@@ -219,20 +220,33 @@
                             MouseUp="Grid_MouseUp"
                             MouseMove="Grid_MouseMove"
                             Background="Transparent"
-                            Visibility="Collapsed"
+                            
                             Width="{Binding ElementName=imageCaptured, Path=ActualWidth}" Height="{Binding ElementName=imageCaptured, Path=ActualHeight}"/>
 
-                        <Grid Name="IntensityColorKeyGrid"
-                              Grid.Column="2"
+                        <Grid Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="5*" />
+                            </Grid.RowDefinitions>
+
+                            <Label Name="lblHeatMapUnits" Content="dBuV" Grid.Row="0" HorizontalAlignment="Center"/>
+                            <Grid Name="IntensityColorKeyGrid"
+                              Grid.Row="1"
                               Width="80"/>
+                        </Grid>
+                        
+                        
                     </Grid>
                 </TabItem>
 
                 <TabItem Header="Analyze" Name="AnalyzeTab">
                     <Grid>
-
-                        <DataGrid Name="dgThresholds" Width="150" Margin="10,10,0,10"
-                                  HorizontalAlignment="Left" AutoGenerateColumns="false"
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="5*"/>
+                        </Grid.ColumnDefinitions>
+                        <DataGrid Name="dgThresholds" Grid.Column="0" 
+                                  AutoGenerateColumns="false"
                                   IsReadOnly="True" RowHeaderWidth="0"
                                   SelectedCellsChanged="analyzeGrid_SelectedCellsChanged">
                             <DataGrid.Columns>
@@ -246,21 +260,30 @@
                                 </Style>
                             </DataGrid.ItemContainerStyle>
                         </DataGrid>
+                        
+                        <Grid Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="5*" />
+                            </Grid.RowDefinitions>
 
-                        <ni:Graph Name="graph1" Margin="174,5,5,10" DefaultInteraction="Pan" >
-                            <ni:Graph.Children>
-                                <ni:MultiPlotCursor />
-                            </ni:Graph.Children>
-                            <ni:Graph.Plots>
-                                <ni:Plot Label="Data" Name="PlotData">
-                                    <ni:LinePlotRenderer Stroke="Blue" />
+                            <Label Name="lblAnalyzeGraphTitle" Content="dBuV vs Hz" HorizontalAlignment="Center"/>
 
-                                </ni:Plot>
-                                <ni:Plot  Label="Threshold" Name="PlotThreshold">
-                                    <ni:LinePlotRenderer Stroke="Red" />
-                                </ni:Plot>
-                            </ni:Graph.Plots>
-                        </ni:Graph>
+                            <ni:Graph Name="graph1" Grid.Row="1" DefaultInteraction="Pan" >
+                                <ni:Graph.Children>
+                                    <ni:MultiPlotCursor />
+                                </ni:Graph.Children>
+                                <ni:Graph.Plots>
+                                    <ni:Plot Label="Data" Name="PlotData">
+                                        <ni:LinePlotRenderer Stroke="Blue" />
+
+                                    </ni:Plot>
+                                    <ni:Plot  Label="Threshold" Name="PlotThreshold">
+                                        <ni:LinePlotRenderer Stroke="Red" />
+                                    </ni:Plot>
+                                </ni:Graph.Plots>
+                            </ni:Graph>
+                        </Grid>
                     </Grid>
                 </TabItem>
             </TabControl>

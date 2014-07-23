@@ -116,47 +116,65 @@ namespace REMS.classes
             return corners;
         }
 
-        public static void analyzeScannedData(Point[] aCollectedData, ThresholdViewModel aThreshold, double aDistance,
-            out Boolean aPassed, out double aValue)
+        public static void analyzeScannedData(Point[] aCollectedData, ObservableCollection<ThresholdViewModel> aThresholds,
+            ThresholdViewModel aSelectedThreshold, double aDistance, out Boolean aPassed, out double aReturnValue)
         {
-            aPassed = true; // Default to Passed;
-            aValue = 0;
+            aReturnValue = 0;
+            aPassed = true;
+            double lValue = 0;
 
-            ThresholdViewModel lDerivedThreshold = Utilities.getDerivedThreshold(aThreshold, aDistance);
-            Nullable<double> lMinDifference = null;
-
-            if (lDerivedThreshold != null)
+            foreach (ThresholdViewModel lThreshold in aThresholds)
             {
-                // Loop through all of the amplitudes of the collected data
-                foreach (Point lPoint in aCollectedData) // number of data points collected
+                ThresholdViewModel lDerivedThreshold = Utilities.getDerivedThreshold(lThreshold, aDistance);
+                Nullable<double> lMinDifference = null;
+
+                if (lDerivedThreshold != null)
                 {
-                    ThresholdLimitViewModel prevLimit = null;
-
-                    // Loop through all of the limits of the threshold
-                    foreach (ThresholdLimitViewModel lLimit in lDerivedThreshold.Limits) // limits within this threshold
+                    // Loop through all of the amplitudes of the collected data
+                    foreach (Point lPoint in aCollectedData) // number of data points collected
                     {
-                        if (prevLimit == null)
-                            prevLimit = lLimit;
+                        ThresholdLimitViewModel prevLimit = null;
 
-                        if (lPoint.X > Convert.ToDouble(lLimit.Frequency))
+                        // Loop through all of the limits of the threshold
+                        foreach (ThresholdLimitViewModel lLimit in lDerivedThreshold.Limits) // limits within this threshold
                         {
-                            prevLimit = lLimit;
-                            continue;
+                            if (prevLimit == null)
+                                prevLimit = lLimit;
+
+                            if (lPoint.X > Convert.ToDouble(lLimit.Frequency))
+                            {
+                                prevLimit = lLimit;
+                                continue;
+                            }
+
+                            // If we have gotten this far, we know we are comparing 
+                            //the data to the correct threshold
+                            if (Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1) < lMinDifference || lMinDifference == null)
+                            {
+                                lMinDifference = Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1);
+                                lValue = (lMinDifference.Value * -1);
+                            }
+
+                            if (lPoint.Y > Convert.ToInt32(prevLimit.Amplitude))
+                            {
+                                lThreshold.State = "Failed";
+                                break;
+                            }
+                        } // end of limits loop
+
+                        if (lThreshold.State != "Failed")
+                        {
+                            lThreshold.State = "Passed";
                         }
-
-                        // If we have gotten this far, we know we are comparing 
-                        //the data to the correct threshold
-                        if (Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1) < lMinDifference || lMinDifference == null)
+                        else
                         {
-                            lMinDifference = Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1);
-                            aValue = (lMinDifference.Value * -1);
-                        }
-
-                        if (lPoint.Y > Convert.ToInt32(prevLimit.Amplitude))
-                        {
-                            aThreshold.State = "Failed";
                             aPassed = false;
-                            break;
+                        }
+
+                        // Only care to return the distance from the selected threashold
+                        if (lThreshold == aSelectedThreshold)
+                        {
+                            aReturnValue = lValue;
                         }
                     }
                 }
@@ -388,10 +406,10 @@ namespace REMS.classes
 
     public static class LogReader
     {
-        public static void openReport(string aFileName, HeatMap aHeatMap, DataGrid aScanLevels, Grid ColorKey)
+        public static void openReport(string aFileName, HeatMap aHeatMap, Grid ColorKey, out ObservableCollection<ScanLevel> aScanLevels)
         {
             string[] lLine = null;
-            ObservableCollection<ScanLevel> lScanLevels = new ObservableCollection<ScanLevel>();
+            aScanLevels = new ObservableCollection<ScanLevel>();
             int lRows = 0;
             int lCols = 0;
             Boolean lFirstLine = true;
@@ -411,20 +429,20 @@ namespace REMS.classes
                             continue;
                         }
 
-                        if (lScanLevels.Count() > 0)
+                        if (aScanLevels.Count() > 0)
                         {
-                            if (lScanLevels.ElementAt<ScanLevel>(lScanLevels.Count() - 1).ZPos != Convert.ToInt32(lLine[2]))
-                                lScanLevels.Add(new ScanLevel(Convert.ToInt32(lLine[2]), "Complete"));
+                            if (aScanLevels.ElementAt<ScanLevel>(aScanLevels.Count() - 1).ZPos != Convert.ToInt32(lLine[2]))
+                                aScanLevels.Add(new ScanLevel(Convert.ToInt32(lLine[2]), "Complete"));
                         }
                         else
                         {
-                            lScanLevels.Add(new ScanLevel(Convert.ToInt32(lLine[2]), "Complete"));
+                            aScanLevels.Add(new ScanLevel(Convert.ToInt32(lLine[2]), "Complete"));
                         }
                     }
                 }
                 aHeatMap.Clear(ColorKey);
                 aHeatMap.Create(lCols, lRows, ColorKey);
-                aScanLevels.ItemsSource = lScanLevels;
+                //aScanLevels = lScanLevels;
             }
             catch (Exception)
             {

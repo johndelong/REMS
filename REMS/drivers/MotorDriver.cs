@@ -137,8 +137,13 @@ namespace REMS.drivers
         private void homeMotors()
         {
             mWasHomed = false;
+
+            
             if (!mStopped)
             {
+                sendCommand("F,C,S3M3000,S1M3000,S2M3000,R");
+                WaitUntilFinished();
+
                 sendCommand("F,C,I2M-0,R");
                 WaitUntilFinished();
             }
@@ -155,9 +160,11 @@ namespace REMS.drivers
             {
                 mWasHomed = true;
             }
+            
+            sendCommand("F,C,S3M2000,S1M2000,S2M2000,R");
         }
 
-        public Boolean move(int aXPos, int aYPos, int aZPos)
+        public Boolean move(int aXPos, int aYPos, int aZPos, Boolean aFast = false)
         {
             // if want to move the motors, we are going to assume that
             // the motors shouldn't be stopped anymore
@@ -169,6 +176,11 @@ namespace REMS.drivers
 
             if (!mStopped)
             {
+                if (aFast)
+                {
+                    sendCommand("F,C,S3M3000,S1M3000,S2M3000,R");
+                }
+
                 // Since our motor step size is 0.005mm, we have to
                 // multiply our steps by 200 to get 1mm increments
                 string lXPos = Convert.ToString(aXPos * 200);
@@ -180,6 +192,12 @@ namespace REMS.drivers
                 sendCommand(lCommand);
 
                 WaitUntilFinished();
+            }
+
+            // return motors back to original speed
+            if (aFast)
+            {
+                sendCommand("F,C,S3M2000,S1M2000,S2M2000,R");
             }
 
             return !mStopped;

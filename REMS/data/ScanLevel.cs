@@ -8,12 +8,14 @@ namespace REMS.data
     public class ScanLevel : ObservableObject
     {
         int _zPos;
-        string _state;
+        string _scanState;
+        string _pfState;
 
-        public ScanLevel(int aZPos = 0, string aState = "Ready")
+        public ScanLevel(int aZPos = 0, string aScanState = "Ready", string apfState = "NA")
         {
             _zPos = aZPos;
-            _state = aState;
+            _scanState = aScanState;
+            _pfState = apfState;
         }
 
         public int ZPos
@@ -26,13 +28,23 @@ namespace REMS.data
             }
         }
 
-        public string State
+        public string ScanState
         {
-            get { return _state; }
+            get { return _scanState; }
             set
             {
-                _state = value;
-                RaisePropertyChanged("State");
+                _scanState = value;
+                RaisePropertyChanged("ScanState");
+            }
+        }
+
+        public string pfState
+        {
+            get { return _pfState; }
+            set
+            {
+                _pfState = value;
+                RaisePropertyChanged("pfState");
             }
         }
     }
