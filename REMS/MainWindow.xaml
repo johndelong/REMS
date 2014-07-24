@@ -20,7 +20,7 @@
                 </MenuItem>
                 <MenuItem Header="_Commands" Name="menuCommands">
                     <MenuItem Header="_Change Probe" Name="btnChangeProbe" Click="click_changeProbe"/>
-                    <MenuItem Header="_Get Base Line" Name="btnBaseLine" Click="btnBaseLine_Click" />
+                    <!--<MenuItem Header="_Get Base Line" Name="btnBaseLine" Click="btnBaseLine_Click" />-->
                     <MenuItem Header="_Home Motors" Name="btnHomeMotors" Click="btnHomeMotors_Click"/>
                     <MenuItem Header="_Move To..." Name="btnMoveTo" Click="click_MoveTo"/>
                 </MenuItem>
@@ -91,6 +91,8 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="5*" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -152,7 +154,19 @@
 
                 </GroupBox>
 
-                <GroupBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,10" Header="Connection Status" >
+                <GroupBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,0" Header="Mode Selection" >
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5*" />
+                            <ColumnDefinition Width="5*" />
+                        </Grid.ColumnDefinitions>
+
+                        <RadioButton Grid.Column="0" GroupName="mode" Name="rbEField" Content="E-Field" Click="rbField_Click" IsChecked="True"/>
+                        <RadioButton Grid.Column="1" GroupName="mode" Name="rbHField" Content="H-Field" Click="rbField_Click" />
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="3,0,3,10" Header="Connection Status" >
                     <Grid Margin="3,0,3,0" >
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -170,7 +184,7 @@
                     </Grid>
                 </GroupBox>
 
-                <Grid Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,3">
+                <Grid Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="5*" />
                         <ColumnDefinition Width="5*" />

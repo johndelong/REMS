@@ -206,12 +206,24 @@ namespace REMS.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public double[] BaseLine {
+        public double BaseLine {
             get {
-                return ((double[])(this["BaseLine"]));
+                return ((double)(this["BaseLine"]));
             }
             set {
                 this["BaseLine"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EField {
+            get {
+                return ((bool)(this["EField"]));
+            }
+            set {
+                this["EField"] = value;
             }
         }
     }

@@ -301,7 +301,7 @@ namespace REMS
         {
             try
             {
-                if (aThreshold != null)
+                if (aThreshold != null && Properties.Settings.Default.EField)
                 {
                     if (aThreshold.Limits.Count != 0)
                     {
@@ -321,6 +321,10 @@ namespace REMS
                         }
                         graph1.Data[0] = lThresholdLine;
                     }
+                }
+                else
+                {
+                    graph1.Data[0] = null;
                 }
             }
             catch (Exception)
@@ -344,9 +348,11 @@ namespace REMS
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
 
+                    rbEField.IsEnabled = true;
+                    rbHField.IsEnabled = true;
                     //btnCalibrate.IsEnabled = true;
                     btnHomeMotors.IsEnabled = true;
-                    btnBaseLine.IsEnabled = true;
+                    //btnBaseLine.IsEnabled = true;
                     btnChangeProbe.IsEnabled = true;
                     btnMoveTo.IsEnabled = true;
                     btnPreferences.IsEnabled = true;
@@ -393,10 +399,12 @@ namespace REMS
 
                 case Constants.state.Calibration:
                     btnHomeMotors.IsEnabled = false;
-                    btnBaseLine.IsEnabled = false;
+                    //btnBaseLine.IsEnabled = false;
                     btnChangeProbe.IsEnabled = false;
                     btnMoveTo.IsEnabled = false;
                     btnCancel.IsEnabled = true;
+                    rbEField.IsEnabled = false;
+                    rbHField.IsEnabled = false;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusCalibration1;
@@ -417,8 +425,10 @@ namespace REMS
                     btnAccept.Background = Brushes.Green;
                     btnAccept.IsEnabled = true;
 
+                    rbEField.IsEnabled = false;
+                    rbHField.IsEnabled = false;
                     btnHomeMotors.IsEnabled = false;
-                    btnBaseLine.IsEnabled = false;
+                    //btnBaseLine.IsEnabled = false;
                     btnChangeProbe.IsEnabled = false;
                     btnMoveTo.IsEnabled = false;
                     btnPreferences.IsEnabled = false;
@@ -463,7 +473,7 @@ namespace REMS
                     // Initialize the file
                     if (!mScanStarted)
                     {
-                        Logger.initializeFile(mLogFileName + ".csv", mXScanPoints, mYScanPoints, mScans.Count);
+                        Logger.initializeFile(mLogFileName + ".csv", mXScanPoints, mYScanPoints, mScans.Count, Properties.Settings.Default.EField);
                         mScanStarted = true;
                     }
 
@@ -527,11 +537,13 @@ namespace REMS
                     btnAccept.Content = "Accept";
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
+                    rbEField.IsEnabled = false;
+                    rbHField.IsEnabled = false;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusOverview;
 
-                    btnBaseLine.IsEnabled = false;
+                    //btnBaseLine.IsEnabled = false;
                     btnHomeMotors.IsEnabled = false;
                     btnChangeProbe.IsEnabled = false;
                     btnMoveTo.IsEnabled = false;
@@ -688,7 +700,7 @@ namespace REMS
         private void click_open(object sender, RoutedEventArgs e)
         {
             transitionToState(Constants.state.Overview);
-
+            Boolean lEField;
             string lFileName = "";
 
             if (DialogBox.open(out lFileName, "LOG"))
@@ -697,9 +709,21 @@ namespace REMS
                 mLogFileName = tokens[0];
 
                 // Read In the Log file
-                LogReader.openReport(mLogFileName + ".csv", mHeatMap, IntensityColorKeyGrid, out mScans);
+                LogReader.openReport(mLogFileName + ".csv", mHeatMap, IntensityColorKeyGrid, out mScans, out lEField);
 
                 dgZScanPoints.ItemsSource = mScans;
+                Properties.Settings.Default.EField = lEField;
+
+                if (Properties.Settings.Default.EField)
+                {
+                    rbEField.IsChecked = true;
+                    rbHField.IsChecked = false;
+                }
+                else
+                {
+                    rbEField.IsChecked = false;
+                    rbHField.IsChecked = true;
+                }
 
                 // Try to read in the scan image with the same file name
                 try
@@ -1196,7 +1220,7 @@ namespace REMS
             lCurrentCol = (int)Math.Round((mMotorXPos - ((double)mXYStepSize / 2) - mMotorScanArea[0].X) / mXYStepSize);
             lCurrentRow = (int)Math.Round((mMotorYPos - ((double)mXYStepSize / 2) - mMotorScanArea[0].Y) / mXYStepSize);
 
-            double lMaxDifference;
+            double lMaxDifference = 0;
             Boolean lPassed;
 
             mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).ScanState = "In Progress";
@@ -1221,14 +1245,27 @@ namespace REMS
                 for (int i = 0; i < lDataLen; i++)
                 {
                     lData[i] += 107; //- Properties.Settings.Default.BaseLine[i];
+
+                    if (!Properties.Settings.Default.EField)
+                    {
+                        lData[i] = Math.Pow(10, (lData[i]/20)) / 50; //uAmps
+                    }
+
                     lFinalData[i] = new Point(lCurrFreq, lData[i]);
                     lCurrFreq += lStepSize;
                 }
             }
 
-            Utilities.analyzeScannedData(lFinalData, mThresholds, mSelectedThreshold, mMotorZPos, out lPassed, out lMaxDifference);
+            if (Properties.Settings.Default.EField)
+            {
+                Utilities.analyzeScannedData(lFinalData, mThresholds, mSelectedThreshold, mMotorZPos, out lPassed, out lMaxDifference);
 
-            mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).pfState = lPassed ? "Passed" : "Failed";
+                mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).pfState = lPassed ? "Passed" : "Failed";
+            }
+            else
+            {
+                Utilities.getMaxAmplitude(lFinalData, out lMaxDifference);
+            }
 
             // Save collected data
             Logger.writeToFile(mLogFileName + ".csv", lCurrentCol, lCurrentRow, (int)mMotorZPos, (int)mMotorXPos, (int)mMotorYPos, lFinalData);
@@ -1336,6 +1373,19 @@ namespace REMS
             mZMax = Properties.Settings.Default.nsZMax;
             nsZMin.Value = mZMin;
             nsZMax.Value = mZMax;
+
+            if (Properties.Settings.Default.EField)
+            {
+                rbEField.IsChecked = true;
+                rbHField.IsChecked = false;
+            }
+            else
+            {
+                rbEField.IsChecked = false;
+                rbHField.IsChecked = true;
+            }
+
+            updateTitles();
         }
 
         private void saveUserPreferences()
@@ -1410,9 +1460,16 @@ namespace REMS
                                 lData[i] = new Point(Convert.ToDouble(lStrPoint[0]), Convert.ToDouble(lStrPoint[1]));
                             }
 
-                            Utilities.analyzeScannedData(lData, mThresholds, mSelectedThreshold, (double)(((ScanLevel)dgZScanPoints.SelectedItem).ZPos), out lPassed, out lValue);
+                            if (Properties.Settings.Default.EField)
+                            {
+                                Utilities.analyzeScannedData(lData, mThresholds, mSelectedThreshold, (double)(((ScanLevel)dgZScanPoints.SelectedItem).ZPos), out lPassed, out lValue);
 
-                            mScans.ElementAt<ScanLevel>(aZIndex).pfState = lPassed ? "Passed" : "Failed";
+                                mScans.ElementAt<ScanLevel>(aZIndex).pfState = lPassed ? "Passed" : "Failed";
+                            }
+                            else
+                            {
+                                Utilities.getMaxAmplitude(lData, out lValue);
+                            }
 
                             mHeatMap.addIntensityPixel(Convert.ToInt32(lLine[0]), Convert.ToInt32(lLine[1]), Convert.ToInt32(lValue));
                         }
@@ -1539,7 +1596,7 @@ namespace REMS
             mWorkerThread.RunWorkerAsync();
         }
 
-        private void btnBaseLine_Click(object sender, RoutedEventArgs e)
+        /*private void btnBaseLine_Click(object sender, RoutedEventArgs e)
         {
             // Determine when Acquisition is complete
             double[] lBaseLineData = new double[461];
@@ -1561,7 +1618,7 @@ namespace REMS
 
                 Properties.Settings.Default.BaseLine = lBaseLineData;
             }
-        }
+        }*/
 
         private void btnExit_Click(object sender, RoutedEventArgs e)
         {
@@ -1659,6 +1716,27 @@ namespace REMS
                     mSelectedThresholdChanged = false;
                     drawHeatMapFromFile(mLogFileName + ".csv", Convert.ToString(mSelectedScanPoint.ZPos), dgZScanPoints.SelectedIndex);
                 }
+            }
+        }
+
+        private void rbField_Click(object sender, RoutedEventArgs e)
+        {
+            updateTitles();
+        }
+
+        private void updateTitles()
+        {
+            if (rbEField.IsChecked == true)
+            {
+                Properties.Settings.Default.EField = true;
+                lblAnalyzeGraphTitle.Content = "dBuV vs Hz";
+                lblHeatMapUnits.Content = "dBuV";
+            }
+            else if (rbHField.IsChecked == true)
+            {
+                Properties.Settings.Default.EField = false;
+                lblAnalyzeGraphTitle.Content = "uA vs Hz";
+                lblHeatMapUnits.Content = "uA";
             }
         }
     }

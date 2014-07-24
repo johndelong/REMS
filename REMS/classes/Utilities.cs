@@ -20,13 +20,13 @@ namespace REMS.classes
 {
     public static class Constants
     {
-        public static readonly string StatusInitial1 = "Click 'Tools>Capture Image' to define the scan area";
+        public static readonly string StatusInitial1 = "Click 'Preview' to capture image of table";
         public static readonly string StatusInitial2 = "Click and drag to determine scan area";
         public static readonly string StatusInitial3 = "Click accept when desired scan area has been selected";
         public static readonly string StatusReady = "Ready to start scanning";
         public static readonly string StatusStopped = "Scanning paused";
         public static readonly string StatusScanning = "Scanning...";
-        public static readonly string StatusOverview = "To start a new scan, click 'File>New Scan'";
+        public static readonly string StatusOverview = "To start a new scan, click 'File > New Scan'";
         public static readonly string StatusDone = "Scan has finished";
         public static readonly string StatusCalibration1 = "Accurately click OPPOSITE corners of servo travel area";
         public static readonly string StatusCalibration2 = "Click 'Accept' if satisfied with calibration";
@@ -114,6 +114,24 @@ namespace REMS.classes
             corners[0] = topLeft;
             corners[1] = bottomRight;
             return corners;
+        }
+
+        public static void getMaxAmplitude(Point[] aCollectedData, out double aMaxValue)
+        {
+            Boolean lFirst = true;
+            aMaxValue = 0;
+            foreach (Point aPoint in aCollectedData)
+            {
+                if (lFirst)
+                {
+                    lFirst = false;
+                    aMaxValue = aPoint.Y;
+                }
+                else if (aPoint.Y > aMaxValue)
+                {
+                    aMaxValue = aPoint.Y;
+                }
+            }
         }
 
         public static void analyzeScannedData(Point[] aCollectedData, ObservableCollection<ThresholdViewModel> aThresholds,
@@ -406,13 +424,16 @@ namespace REMS.classes
 
     public static class LogReader
     {
-        public static void openReport(string aFileName, HeatMap aHeatMap, Grid ColorKey, out ObservableCollection<ScanLevel> aScanLevels)
+        public static void openReport(string aFileName, HeatMap aHeatMap, Grid ColorKey, 
+            out ObservableCollection<ScanLevel> aScanLevels, out Boolean aEField)
         {
             string[] lLine = null;
             aScanLevels = new ObservableCollection<ScanLevel>();
             int lRows = 0;
             int lCols = 0;
+            aEField = true; // defaults to E-Field
             Boolean lFirstLine = true;
+            string lScanType = "E";
             try
             {
                 using (StreamReader srLog = new StreamReader(aFileName))
@@ -425,6 +446,7 @@ namespace REMS.classes
                         {
                             lCols = Convert.ToInt32(lLine[0]);
                             lRows = Convert.ToInt32(lLine[1]);
+                            lScanType = lLine[3];
                             lFirstLine = false;
                             continue;
                         }
@@ -443,6 +465,11 @@ namespace REMS.classes
                 aHeatMap.Clear(ColorKey);
                 aHeatMap.Create(lCols, lRows, ColorKey);
                 //aScanLevels = lScanLevels;
+
+                if (lScanType == "E")
+                    aEField = true;
+                else
+                    aEField = false;
             }
             catch (Exception)
             {
@@ -463,7 +490,7 @@ namespace REMS.classes
         /// <param name="data"></param>
         /// 
 
-        public static void initializeFile(string aFileName, int aCols, int aRows, int aXYPlanes)
+        public static void initializeFile(string aFileName, int aCols, int aRows, int aXYPlanes, Boolean aEField)
         {
             try
             {
@@ -475,6 +502,16 @@ namespace REMS.classes
                     swLog.Write(aCols.ToString() + ",");
                     swLog.Write(aRows.ToString() + ",");
                     swLog.Write(aXYPlanes.ToString() + ",");
+
+                    if (aEField)
+                    {
+                        swLog.Write("E,"); // E-Field scan
+                    }
+                    else
+                    {
+                        swLog.Write("H,"); // H-Field scan
+                    }
+
                     swLog.Write("\r\n");
                 }
             }

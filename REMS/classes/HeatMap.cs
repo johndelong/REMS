@@ -68,7 +68,7 @@ namespace REMS.classes
 
                 Label lLabel = new Label();
                 lLabel.VerticalAlignment = VerticalAlignment.Center;
-                lLabel.Content = Convert.ToString(lValue);
+                lLabel.Content = Convert.ToString(Math.Round(Convert.ToDouble(lValue), 2));
                 addToGrid(ColorKey, 1, lRow, lLabel);
             }
         }
@@ -248,7 +248,7 @@ namespace REMS.classes
                 if(lObj.GetType().Name == "Label")
                 {
                     Label lLabel = ((Label)lObj);
-                    lLabel.Content = Convert.ToString(lCurrent);
+                    lLabel.Content = Convert.ToString(Math.Round(lCurrent, 2));
                     lCurrent -= lStep;
                 }
             }
