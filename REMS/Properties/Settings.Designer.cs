@@ -157,7 +157,7 @@ namespace REMS.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("6")]
+        [global::System.Configuration.DefaultSettingValueAttribute("30")]
         public double SAMinFrequency {
             get {
                 return ((double)(this["SAMinFrequency"]));
@@ -169,7 +169,7 @@ namespace REMS.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        [global::System.Configuration.DefaultSettingValueAttribute("1000")]
         public double SAMaxFrequency {
             get {
                 return ((double)(this["SAMaxFrequency"]));
@@ -224,6 +224,18 @@ namespace REMS.Properties {
             }
             set {
                 this["EField"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ProbeNum {
+            get {
+                return ((int)(this["ProbeNum"]));
+            }
+            set {
+                this["ProbeNum"] = value;
             }
         }
     }

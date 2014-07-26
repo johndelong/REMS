@@ -1,0 +1,53 @@
+﻿<Window x:Class="REMS.popups.ProbeChangePopup"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ProbeChangePopup" Height="300" Width="300">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="5*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="5*" />
+            <ColumnDefinition Width="5*" />
+        </Grid.ColumnDefinitions>
+
+        <GroupBox Grid.Row="0" Grid.ColumnSpan="2" Header="Field Mode Selection">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="5*"/>
+                    <ColumnDefinition Width="5*"/>
+                </Grid.ColumnDefinitions>
+                
+                <RadioButton Grid.Column="0" Content="E-Field" Name="rbEField" GroupName="ModeSelect" HorizontalAlignment="Center" IsChecked="True"/>
+                <RadioButton Grid.Column="1" Content="H-Field" Name="rbHField" GroupName="ModeSelect" HorizontalAlignment="Center"/>
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="1" Grid.ColumnSpan="2" Header="Probe Selection" IsEnabled="{Binding ElementName=rbHField, Path=IsChecked}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="5*" />
+                </Grid.ColumnDefinitions>
+                
+                <Image Grid.Row="0" Grid.ColumnSpan="3" Source="/REMS;component/images/probes.png" Width="180" />
+                <RadioButton Grid.Row="1" Grid.Column="0" Name="rbHProbe1" Content="6 cm Probe" GroupName="Probes" HorizontalAlignment="Center" />
+                <RadioButton Grid.Row="1" Grid.Column="1" Name="rbHProbe2" Content="3 cm Probe" GroupName="Probes" HorizontalAlignment="Center" />
+                <RadioButton Grid.Row="1" Grid.Column="2" Name="rbHProbe3" Content="1 cm Probe" GroupName="Probes" HorizontalAlignment="Center" />
+                
+            </Grid>
+        </GroupBox>
+        
+        <Button Grid.Row="3" Grid.Column="0" Name="btnCancel" Content="Cancel" Width="70" Click="btnCancel_Click" HorizontalAlignment="Center" />
+        <Button Grid.Row="3" Grid.Column="1" Name="btnOK" Content="OK" Width="70" Click="btnOK_Click" HorizontalAlignment="Center"/>
+        
+    </Grid>
+</Window>

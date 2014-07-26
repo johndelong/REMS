@@ -180,6 +180,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="popups\ProbeChangePopup.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="popups\ImageCapturePopup.xaml.cs">
@@ -190,6 +194,9 @@
     </Compile>
     <Compile Include="popups\PrefPopup.xaml.cs">
       <DependentUpon>PrefPopup.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="popups\ProbeChangePopup.xaml.cs">
+      <DependentUpon>ProbeChangePopup.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
@@ -239,6 +246,11 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="images\probes.png" />
+    <Resource Include="images\rems.ico" />
+    <Resource Include="images\rems.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

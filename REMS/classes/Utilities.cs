@@ -134,6 +134,56 @@ namespace REMS.classes
             }
         }
 
+        public static Point[] convertScannedData(double[] aCollectData, double aMinFreq, double aStepSize, double aDistance, Boolean aEField, int aProbeNum, Boolean aConvert = true)
+        {
+            Point[] lResults = new Point[aCollectData.Length];
+            double lCurrentFreq = aMinFreq;
+
+            // Convert to dbuv
+            for (int i = 0; i < aCollectData.Length; i++)
+            {
+                if (aConvert)
+                {
+                    // dBm -> dBuA = 90 + 10log10(Z) + dBm
+                    if (Properties.Settings.Default.EField) // E-Field Conversions
+                    {
+                        aCollectData[i] += 107; // dBuV
+                        // x + 20log10(1/mm)
+                        aCollectData[i] = aCollectData[i] + 20 * Math.Log10(1 / aDistance); // dBuV/m
+                    }
+
+                    // H Field = V + PF - 51.52
+                    else if (!Properties.Settings.Default.EField) // H-Field Conversions
+                    {
+                        aCollectData[i] += 107 - 51.52; //dBuA
+
+                        // Convert to //dBuA
+                        if (aProbeNum == 1) // 6 cm probe
+                        {
+                            aCollectData[i] += (4E-12 * Math.Pow(lCurrentFreq, 4) - 3E-08 * Math.Pow(lCurrentFreq, 3) + 8E-05 * Math.Pow(lCurrentFreq, 2) - 0.1004 * lCurrentFreq + 76.412);
+                        }
+                        else if (aProbeNum == 2) // 3 cm probe
+                        {
+                            aCollectData[i] += (2E-18 * Math.Pow(lCurrentFreq, 6) - 2E-14 * Math.Pow(lCurrentFreq, 5) + 7E-11 * Math.Pow(lCurrentFreq, 4) - 1E-07 * Math.Pow(lCurrentFreq, 3) + 0.0002 * Math.Pow(lCurrentFreq, 2) - 0.111 * lCurrentFreq + 84.084);
+                        }
+                        else if (aProbeNum == 3) // 1 cm probe
+                        {
+                            aCollectData[i] += (8E-19 * Math.Pow(lCurrentFreq, 6) - 9E-15 * Math.Pow(lCurrentFreq, 5) + 4E-11 * Math.Pow(lCurrentFreq, 4) - 8E-08 * Math.Pow(lCurrentFreq, 3) + 0.0001 * Math.Pow(lCurrentFreq, 2) - 0.094 * lCurrentFreq + 100.03);
+                        }
+
+                        aCollectData[i] = Math.Pow(10, (aCollectData[i] / 20)); // uA
+                        aCollectData[i] = aCollectData[i] / Math.Pow(10, 6); // A
+                        aCollectData[i] = aCollectData[i] / aDistance; // A/m
+                    }
+                }
+
+                lResults[i] = new Point(Math.Round(lCurrentFreq, 3), aCollectData[i]);
+                lCurrentFreq += aStepSize;
+            }
+
+            return lResults;
+        }
+
         public static void analyzeScannedData(Point[] aCollectedData, ObservableCollection<ThresholdViewModel> aThresholds,
             ThresholdViewModel aSelectedThreshold, double aDistance, out Boolean aPassed, out double aReturnValue)
         {

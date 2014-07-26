@@ -43,7 +43,7 @@
                               RowEditEnding="gridThresholdLimits_RowEditEnding">
                         
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding Frequency}" Header="Frequency (Hz)" Width="90"/>
+                            <DataGridTextColumn Binding="{Binding Frequency}" Header="Frequency (MHz)" Width="90"/>
                             <DataGridTextColumn Binding="{Binding Amplitude}" Header="Amplitude (dBmv)" Width="5*"/>
                         </DataGrid.Columns>
                         
@@ -92,9 +92,9 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="60" />
+                                <ColumnDefinition Width="70" />
                                 <ColumnDefinition Width="100" />
-                                <ColumnDefinition Width="190" />
+                                <ColumnDefinition Width="180" />
 
                             </Grid.ColumnDefinitions>
 
@@ -102,8 +102,8 @@
                                     Caution: If frequency values are changed, a new base scan is required to give an accurage reading.
                             </TextBlock>
 
-                            <Label Grid.Row="1" Grid.Column="0" Content="Min (Hz):" />
-                            <Label Grid.Row="2" Grid.Column="0" Content="Max (Hz):" />
+                            <Label Grid.Row="1" Grid.Column="0" Content="Min (MHz):" />
+                            <Label Grid.Row="2" Grid.Column="0" Content="Max (MHz):" />
 
                             <TextBox Name="tbSAMinFreq" Grid.Row="1" Grid.Column="1" Width="Auto" Margin="3"
                                      Text="{Binding ElementName=PopupWindow, Path=SAMinFrequency, Mode=TwoWay}" />

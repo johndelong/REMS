@@ -36,10 +36,10 @@
       <Value Profile="(Default)">1</Value>
     </Setting>
     <Setting Name="SAMinFrequency" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">6</Value>
+      <Value Profile="(Default)">30</Value>
     </Setting>
     <Setting Name="SAMaxFrequency" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">100</Value>
+      <Value Profile="(Default)">1000</Value>
     </Setting>
     <Setting Name="MotorCommPort" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">3</Value>
@@ -52,6 +52,9 @@
     </Setting>
     <Setting Name="EField" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="ProbeNum" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
     </Setting>
   </Settings>
 </SettingsFile>
