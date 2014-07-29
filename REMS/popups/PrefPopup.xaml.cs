@@ -32,8 +32,10 @@ namespace REMS.popups
         private string _motorXTravelDistance = Convert.ToString(Properties.Settings.Default.motorXTravelDistance);
         private string _motorYTravelDistance = Convert.ToString(Properties.Settings.Default.motorYTravelDistance);
         private string _motorZTravelDistance = Convert.ToString(Properties.Settings.Default.motorZTravelDistance);
-        private string _SAMinFrequency = Convert.ToString(Properties.Settings.Default.SAMinFrequency);
-        private string _SAMaxFrequency = Convert.ToString(Properties.Settings.Default.SAMaxFrequency);
+        private string _SAEMinFrequency = Convert.ToString(Properties.Settings.Default.SAEMinFreq);
+        private string _SAEMaxFrequency = Convert.ToString(Properties.Settings.Default.SAEMaxFreq);
+        private string _SAHMinFrequency = Convert.ToString(Properties.Settings.Default.SAHMinFreq);
+        private string _SAHMaxFrequency = Convert.ToString(Properties.Settings.Default.SAHMaxFreq);
         private string _MotorCommPort = Convert.ToString(Properties.Settings.Default.MotorCommPort);
         private string _SAConnectionStrring = Properties.Settings.Default.SAConnectionString;
 
@@ -123,21 +125,39 @@ namespace REMS.popups
             }
         }
 
-        public string SAMinFrequency
+        public string SAEMinFrequency
         {
-            get { return _SAMinFrequency; }
+            get { return _SAEMinFrequency; }
             set
             {
-                _SAMinFrequency = validateNumericInput(value) ? value : _SAMinFrequency;
+                _SAEMinFrequency = validateNumericInput(value) ? value : _SAEMinFrequency;
             }
         }
 
-        public string SAMaxFrequency
+        public string SAEMaxFrequency
         {
-            get { return _SAMaxFrequency; }
+            get { return _SAEMaxFrequency; }
             set
             {
-                _SAMaxFrequency = validateNumericInput(value) ? value : _SAMaxFrequency;
+                _SAEMaxFrequency = validateNumericInput(value) ? value : _SAEMaxFrequency;
+            }
+        }
+
+        public string SAHMinFrequency
+        {
+            get { return _SAHMinFrequency; }
+            set
+            {
+                _SAHMinFrequency = validateNumericInput(value) ? value : _SAHMinFrequency;
+            }
+        }
+
+        public string SAHMaxFrequency
+        {
+            get { return _SAHMaxFrequency; }
+            set
+            {
+                _SAHMaxFrequency = validateNumericInput(value) ? value : _SAHMaxFrequency;
             }
         }
 
@@ -172,9 +192,12 @@ namespace REMS.popups
             Properties.Settings.Default.motorXTravelDistance = Convert.ToDouble(_motorXTravelDistance);
             Properties.Settings.Default.motorYTravelDistance = Convert.ToDouble(_motorYTravelDistance);
             Properties.Settings.Default.motorZTravelDistance = Convert.ToDouble(_motorZTravelDistance);
-            Properties.Settings.Default.SAMinFrequency = Convert.ToDouble(_SAMinFrequency);
-            Properties.Settings.Default.SAMaxFrequency = Convert.ToDouble(_SAMaxFrequency);
+            Properties.Settings.Default.SAEMinFreq = Convert.ToDouble(_SAEMinFrequency);
+            Properties.Settings.Default.SAEMaxFreq = Convert.ToDouble(_SAEMaxFrequency);
+            Properties.Settings.Default.SAHMinFreq = Convert.ToDouble(_SAHMinFrequency);
+            Properties.Settings.Default.SAHMaxFreq = Convert.ToDouble(_SAHMaxFrequency);
             Properties.Settings.Default.MotorCommPort = Convert.ToInt32(_MotorCommPort);
+            Properties.Settings.Default.Save();
         }
 
         private void nsPercentageValidator(object sender, ValueChangedEventArgs<int> e)

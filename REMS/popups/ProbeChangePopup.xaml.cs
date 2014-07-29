@@ -11,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using REMS.classes;
 
 namespace REMS.popups
 {
@@ -19,9 +20,9 @@ namespace REMS.popups
     /// </summary>
     public partial class ProbeChangePopup : Window
     {
-        private Action<Boolean, int> callback;
+        private Action<String, int, int> callback;
 
-        public ProbeChangePopup(Action<Boolean, int> aCallbackFunction)
+        public ProbeChangePopup(Action<String, int, int> aCallbackFunction)
         {
             InitializeComponent();
             callback = aCallbackFunction;
@@ -30,17 +31,45 @@ namespace REMS.popups
         private void btnOK_Click(object sender, RoutedEventArgs e)
         {
             int lProbeNum = 0;
+            int lProbeOffset = 0;
             if(rbHField.IsChecked == true)
             {
-                if(rbHProbe1.IsChecked == true)
+                if (rbHProbe1.IsChecked == true)
+                {
                     lProbeNum = 1;
-                else if(rbHProbe2.IsChecked == true)
+                    lProbeOffset = 150;
+                }
+                else if (rbHProbe2.IsChecked == true)
+                {
                     lProbeNum = 2;
-                else if(rbHProbe3.IsChecked == true)
+                    lProbeOffset = 150;
+                }
+                else if (rbHProbe3.IsChecked == true)
+                {
                     lProbeNum = 3;
+                    lProbeOffset = 150;
+                }
+            }
+            else if (rbEField.IsChecked == true)
+            {
+                if (rbEProbe1.IsChecked == true)
+                {
+                    lProbeNum = 1;
+                }
+                else if (rbEProbe2.IsChecked == true)
+                {
+                    lProbeNum = 2;
+                }
             }
 
-            callback((rbEField.IsChecked == true), lProbeNum);
+            string lScanMode;
+
+            if (rbEField.IsChecked == true)
+                lScanMode = Constants.EField;
+            else
+                lScanMode = Constants.HField;
+
+            callback(lScanMode, lProbeNum, lProbeOffset);
             Close();
         }
 

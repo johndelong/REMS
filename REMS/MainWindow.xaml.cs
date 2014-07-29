@@ -45,8 +45,8 @@ namespace REMS
         private double mMotorXTravelDistance;
         private double mMotorYTravelDistance;
         private double mMotorZTravelDistance;
-        private double mSAMinFrequency; // MHz
-        private double mSAMaxFrequency; // MHz
+        //private double mSAMinFrequency; // MHz
+        //private double mSAMaxFrequency; // MHz
         private Point[] mSABaseLine;
         private int mXYStepSize, mZStepSize, mZMin, mZMax;
 
@@ -73,6 +73,7 @@ namespace REMS
 
         // Others
         private Constants.state mCurrentState, mPreviousState;
+        private int mProbeChangeState = 0;
         private Constants.direction mVerticalScanDirection, mHorizontalScanDirection;
         private Boolean mScanFinished = false;
         private Boolean mScanStarted = false;
@@ -82,6 +83,8 @@ namespace REMS
         private Boolean mHeatMapPixelClicked = false;
         private Boolean mSelectedThresholdChanged = false;
         private int mDUTHeight = 0;
+        private string mScanMode;
+        private int mProbeNum;
 
         public MainWindow()
         {
@@ -129,7 +132,7 @@ namespace REMS
             try
             {
                 mScope = new agn934xni(Properties.Settings.Default.SAConnectionString, false, false);
-                mScope.ConfigureFrequencyStartStop(mSAMinFrequency * 1000000, mSAMaxFrequency * 1000000);
+                setSAFreqRange();
 
                 if (mScope != null)
                 {
@@ -195,22 +198,33 @@ namespace REMS
             }
             else if (mCurrentState == Constants.state.ProbeChange)
             {
-                if (moveMotors((mMotorXTravelDistance / 2), mMotorYTravelDistance, 20, true))
+                if (mProbeChangeState == 0)
                 {
-                    MessageBox.Show("1) Disconnect currently connected probe\n2) Connect new probe\n3) Move probe up in cord grip as high as possible. DO NOT TIGHTEN PROBE!\n4) Press OK to move motors further down.",
-                        "Information", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                    if (moveMotors((mMotorXTravelDistance / 2), mMotorYTravelDistance, 0))
+                    if (moveMotors((mMotorXTravelDistance / 2), mMotorYTravelDistance, 20, true))
                     {
-                        MessageBox.Show("1) Adjust probe to be 1 mm above table and tighten cord grip\n2) Click OK when ready to return motors to home position.",
-                        "Information", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                        moveMotors(0, 0, mMotorZTravelDistance, true);
+                        mProbeChangeState = 1;
+                        MessageBox.Show("1) Disconnect currently connected probe\n2) Connect new probe\n3) Move probe up in cord grip as high as possible. DO NOT TIGHTEN PROBE!\n4) Press OK to move motors further down.",
+                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                 }
-                else
+
+                if (mProbeChangeState == 1)
                 {
-                    moveMotors(0, 0, mMotorZTravelDistance);
+                    if (moveMotors((mMotorXTravelDistance / 2), mMotorYTravelDistance, 0))
+                    {
+                        mProbeChangeState = 2;
+                        MessageBox.Show("1) Adjust probe to be 1 mm above table and tighten cord grip\n2) Click OK when ready to return motors to home position.",
+                        "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+
+                if (mProbeChangeState == 2)
+                {
+                    if (moveMotors(0, 0, mMotorZTravelDistance, true))
+                    {
+                        mProbeChangeState = 0;
+                        transitionToState(Constants.state.Initial);
+                    }
                 }
             }
         }
@@ -236,10 +250,6 @@ namespace REMS
                 // only enable the resume button when this thread has finished
                 btnAccept.IsEnabled = true;
                 btnCancel.IsEnabled = true;
-            }
-            else if (mCurrentState == Constants.state.ProbeChange)
-            {
-                transitionToState(Constants.state.Initial);
             }
         }
 
@@ -307,7 +317,7 @@ namespace REMS
         {
             try
             {
-                if (aThreshold != null && Properties.Settings.Default.EField)
+                if (aThreshold != null && mScanMode == Constants.EField)
                 {
                     if (aThreshold.Limits.Count != 0)
                     {
@@ -354,11 +364,7 @@ namespace REMS
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
 
-                    //rbEField.IsEnabled = true;
-                    //rbHField.IsEnabled = true;
-                    //btnCalibrate.IsEnabled = true;
                     btnHomeMotors.IsEnabled = true;
-                    //btnBaseLine.IsEnabled = true;
                     btnChangeProbe.IsEnabled = true;
                     btnMoveTo.IsEnabled = true;
                     btnPreferences.IsEnabled = true;
@@ -401,16 +407,21 @@ namespace REMS
                         btnCalibrate.IsEnabled = true;
                     }
 
+                    // Restore the mode to whatever probe is installed
+                    mProbeNum = Properties.Settings.Default.ProbeNum;
+                    mScanMode = Properties.Settings.Default.ScanMode;
+
+                    updateTitles();
+
+                    setSAFreqRange();
+
                     break;
 
                 case Constants.state.Calibration:
                     btnHomeMotors.IsEnabled = false;
-                    //btnBaseLine.IsEnabled = false;
                     btnChangeProbe.IsEnabled = false;
                     btnMoveTo.IsEnabled = false;
                     btnCancel.IsEnabled = true;
-                    //rbEField.IsEnabled = false;
-                    //rbHField.IsEnabled = false;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusCalibration1;
@@ -479,14 +490,12 @@ namespace REMS
                     // Initialize the file
                     if (!mScanStarted)
                     {
-                        Logger.initializeFile(mLogFileName + ".csv", mXScanPoints, mYScanPoints, mScans.Count, Properties.Settings.Default.EField);
+                        Logger.initializeFile(mLogFileName + ".csv", mXScanPoints, mYScanPoints, mScans.Count, Properties.Settings.Default.ScanMode);
                         mScanStarted = true;
                     }
 
-                    if (mScope != null)
-                    {
-                        mScope.ConfigureFrequencyStartStop(mSAMinFrequency * 1000000, mSAMaxFrequency * 1000000);
-                    }
+                    // Just in case the user accidently changed the frequency on the SA
+                    setSAFreqRange();
 
                     // Start moving the motors
                     try
@@ -548,13 +557,10 @@ namespace REMS
                     btnAccept.Content = "Accept";
                     btnAccept.Background = null;
                     btnAccept.IsEnabled = false;
-                    //rbEField.IsEnabled = false;
-                    //rbHField.IsEnabled = false;
 
                     // Update Status
                     lblStatus.Text = Constants.StatusOverview;
 
-                    //btnBaseLine.IsEnabled = false;
                     btnHomeMotors.IsEnabled = false;
                     btnChangeProbe.IsEnabled = false;
                     btnMoveTo.IsEnabled = false;
@@ -577,6 +583,8 @@ namespace REMS
                     mHorizontalScanDirection = Constants.direction.East;
 
                     canvasDrawing.Visibility = Visibility.Collapsed;
+
+                    updateTitles();
                     break;
 
                 case Constants.state.ProbeChange:
@@ -717,7 +725,7 @@ namespace REMS
         private void click_open(object sender, RoutedEventArgs e)
         {
             transitionToState(Constants.state.Overview);
-            Boolean lEField;
+            String lScanMode;
             string lFileName = "";
 
             if (DialogBox.open(out lFileName, "LOG"))
@@ -726,10 +734,10 @@ namespace REMS
                 mLogFileName = tokens[0];
 
                 // Read In the Log file
-                LogReader.openReport(mLogFileName + ".csv", mHeatMap, IntensityColorKeyGrid, out mScans, out lEField);
+                LogReader.openReport(mLogFileName + ".csv", mHeatMap, IntensityColorKeyGrid, out mScans, out lScanMode);
 
                 dgZScanPoints.ItemsSource = mScans;
-                Properties.Settings.Default.EField = lEField;
+                mScanMode = lScanMode;
 
                 updateTitles();
 
@@ -798,7 +806,10 @@ namespace REMS
         {
             PrefPopup popup = new PrefPopup();
             popup.ShowDialog();
-            loadUserPreferences();
+
+            mMotorXTravelDistance = Properties.Settings.Default.motorXTravelDistance;
+            mMotorYTravelDistance = Properties.Settings.Default.motorYTravelDistance;
+            mMotorZTravelDistance = Properties.Settings.Default.motorZTravelDistance;
 
             mThresholds = new ObservableCollection<ThresholdViewModel>(ExternalData.GetThresholds());
             dgThresholds.ItemsSource = mThresholds;
@@ -821,10 +832,12 @@ namespace REMS
             }
         }
 
-        private void probeChange_callback(Boolean aEField, int aProbeNum)
+        private void probeChange_callback(String aScanMode, int aProbeNum, int aProbeOffset)
         {
-            Properties.Settings.Default.EField = aEField;
+            Properties.Settings.Default.ScanMode = aScanMode;
             Properties.Settings.Default.ProbeNum = aProbeNum;
+            Properties.Settings.Default.ProbeOffset = aProbeOffset;
+            Properties.Settings.Default.Save();
 
             updateTitles();
 
@@ -1175,6 +1188,7 @@ namespace REMS
 
             mTotalScanPoints = Convert.ToInt32(mXScanPoints * mYScanPoints * numXYPlanes);
 
+            mCDTimer = null;
             mCDTimer = new CountdownTimer(lblCDTimer, mTotalScanPoints);
 
             // Initialize the heatmap
@@ -1245,7 +1259,7 @@ namespace REMS
 
             Point[] lFinalData = getSAData();
 
-            if (Properties.Settings.Default.EField)
+            if (Properties.Settings.Default.ScanMode == Constants.EField)
             {
                 Utilities.analyzeScannedData(lFinalData, mThresholds, mSelectedThreshold, mMotorZPos, out lPassed, out lMaxDifference);
 
@@ -1275,7 +1289,11 @@ namespace REMS
             double[] lData = new double[461];
             int lDataLen;
             Point[] lFinalData = new Point[461];
-            double lStepSize = (mSAMaxFrequency - mSAMinFrequency) / 461;
+            
+            double lMinFreq = (Properties.Settings.Default.ScanMode == Constants.EField ? Properties.Settings.Default.SAEMinFreq : Properties.Settings.Default.SAHMinFreq) * 1000000;
+            double lMaxFreq = (Properties.Settings.Default.ScanMode == Constants.EField ? Properties.Settings.Default.SAEMaxFreq : Properties.Settings.Default.SAHMaxFreq) * 1000000;
+
+            double lStepSize = (lMaxFreq - lMinFreq) / 461;
             double lDistance = (mMotorZPos - mDUTHeight) / 1000;
 
             if (mScope != null)
@@ -1287,10 +1305,12 @@ namespace REMS
                 mScope.FetchYTrace("TRACE1", 461, out lDataLen, lData);
                 
                 if(aRemoveNoise)
-                    removeNoise(lData);
+                    Utilities.removeNoise(lData, mSABaseLine);
 
-                lFinalData = Utilities.convertScannedData(lData, mSAMinFrequency, lStepSize, lDistance,
-                                Properties.Settings.Default.EField, Properties.Settings.Default.ProbeNum, aConvert);
+                lFinalData = Utilities.convertArray2Points(lData, lMinFreq, lStepSize);
+
+                if(aConvert)
+                    Utilities.convertScannedData(lFinalData, lDistance, Properties.Settings.Default.ScanMode, Properties.Settings.Default.ProbeNum);    
             }
 
             return lFinalData;
@@ -1319,6 +1339,9 @@ namespace REMS
                 if (nextZ == mZMax)
                 {
                     mScanFinished = true;
+
+                    // Stop the count down timer
+                    mCDTimer.Stop();
                 }
                 else
                 {
@@ -1357,7 +1380,6 @@ namespace REMS
                 int num = rNum.Next(110) - rNum.Next(150);
                 if (num < 0)
                     num = -(num / 2);
-                //int num = 85;
 
                 data[i] = num;
                 if (i > 420)
@@ -1379,11 +1401,12 @@ namespace REMS
 
             sHeatMapOpacity.Value = Properties.Settings.Default.heatMapOpacity;
 
-            mSAMinFrequency = Properties.Settings.Default.SAMinFrequency;
-            mSAMaxFrequency = Properties.Settings.Default.SAMaxFrequency;
-
             nsXYStepSize.Value = Properties.Settings.Default.nsXYStepSize;
             nsZStepSize.Value = Properties.Settings.Default.nsZStepSize;
+
+            mScanMode = Properties.Settings.Default.ScanMode;
+            mProbeNum = Properties.Settings.Default.ProbeNum;
+
             mZMin = Properties.Settings.Default.nsZMin;
             mZMax = Properties.Settings.Default.nsZMax;
             nsZMin.Value = mZMin;
@@ -1467,7 +1490,7 @@ namespace REMS
                                 lData[i] = new Point(Convert.ToDouble(lStrPoint[0]), Convert.ToDouble(lStrPoint[1]));
                             }
 
-                            if (Properties.Settings.Default.EField)
+                            if (mScanMode == Constants.EField)
                             {
                                 Utilities.analyzeScannedData(lData, mThresholds, mSelectedThreshold, (double)(((ScanLevel)dgZScanPoints.SelectedItem).ZPos), out lPassed, out lValue);
 
@@ -1520,47 +1543,6 @@ namespace REMS
 
             transitionToState(Constants.state.Overview);
         }
-
-        /// <summary>
-        /// Ensures that the values entered into the numeric steppers are valid
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        /*private void ZLimitValidator(object sender, ValueChangedEventArgs<int> e)
-        {
-            NumericTextBoxInt32 numericStepper = sender as NumericTextBoxInt32;
-
-            // Step size cannot be less than 1
-            if (e.NewValue < 0)
-                numericStepper.Value = 0;
-
-            int lMinVal = (int)mDUTHeight + 1;
-
-            if (e.NewValue < lMinVal)
-                numericStepper.Value = lMinVal;
-
-            DependencyObject ldpObj = sender as DependencyObject;
-            string lComponentName = ldpObj.GetValue(FrameworkElement.NameProperty) as string;
-
-            if (lComponentName == "nsZMin")
-            {
-                if (e.NewValue > mMotorZTravelDistance)
-                    numericStepper.Value = (int)mMotorZTravelDistance;
-                else if (e.NewValue > mZMax)
-                    numericStepper.Value = mZMax;
-
-                mZMin = numericStepper.Value;
-            }
-            else if (lComponentName == "nsZMax")
-            {
-                if (e.NewValue > mMotorZTravelDistance)
-                    numericStepper.Value = (int)mMotorZTravelDistance;
-                else if (e.NewValue < mZMin)
-                    numericStepper.Value = mZMin;
-
-                mZMax = numericStepper.Value;
-            }
-        }*/
 
         /// <summary>
         /// Ensures that the values entered into the numeric steppers are valid
@@ -1656,7 +1638,12 @@ namespace REMS
 
             // Ready to move the motors
             if (mMotor.isOnline())
-                lSuccess = mMotor.move((int)X, (int)Y, (int)(mMotorZTravelDistance - Z), aFast);
+            {
+                // Account for probe offset (if necessary)
+                int lX = (int)X - Properties.Settings.Default.ProbeOffset < 0 ? 0 : (int)X - Properties.Settings.Default.ProbeOffset;
+
+                lSuccess = mMotor.move(lX, (int)Y, (int)(mMotorZTravelDistance - Z), aFast);
+            }
             else
             {
                 this.Dispatcher.Invoke((Action)(() =>
@@ -1683,11 +1670,6 @@ namespace REMS
                     else
                         btnAccept.IsEnabled = false;
                 }
-                /*else if (mCurrentState == Constants.state.Ready)
-                {
-                    btnAccept.IsEnabled = true;
-                    btnCancel.IsEnabled = true;
-                }*/
                 else
                     btnAccept.IsEnabled = lAcceptIsEnabled;
 
@@ -1711,19 +1693,19 @@ namespace REMS
 
         private void updateTitles()
         {
-            if (Properties.Settings.Default.EField == true)
+            if (mScanMode == Constants.EField)
             {
-                lblAnalyzeGraphTitle.Content = "dBuV vs MHz";
-                lblHeatMapUnits.Content = "dBuV";
+                lblAnalyzeGraphTitle.Content = "dBuV/m vs MHz";
+                lblHeatMapUnits.Content = "dBuV/m";
 
                 lblMode.Text = "E-Field";
             }
-            else if (Properties.Settings.Default.EField == false)
+            else if (mScanMode == Constants.HField)
             {
                 lblAnalyzeGraphTitle.Content = "A/m vs MHz";
                 lblHeatMapUnits.Content = "A/m";
 
-                lblMode.Text = "H-Field " + getProbeName(Properties.Settings.Default.ProbeNum);
+                lblMode.Text = "H-Field " + getProbeName(mProbeNum);
             }
         }
 
@@ -1757,13 +1739,11 @@ namespace REMS
                 if (mZMax < mDUTHeight)
                 {
                     mZMax = (int)mDUTHeight + 1;
-                    //nsZMax.Value = (int)mDUTHeight + 1;
                 }
 
                 if (mZMin < mDUTHeight)
                 {
                     mZMin = (int)mDUTHeight + 1;
-                    //nsZMin.Value = (int)mDUTHeight + 1;
                 }
 
                 nsZMax.Value = mZMax;
@@ -1803,7 +1783,7 @@ namespace REMS
 
         private void btnDataCollector_Click(object sender, RoutedEventArgs e)
         {
-            Point[] lFinalData = getSAData(true, false);
+            Point[] lFinalData = getSAData(true, true);
             graph1.Data[1] = lFinalData;
             AnalyzeTab.IsSelected = true;
         }
@@ -1827,14 +1807,14 @@ namespace REMS
             mSABaseLine = lFinalData;
         }
 
-        private void removeNoise(double[] aData)
+        private void setSAFreqRange()
         {
-            if (mSABaseLine != null)
+            if (mScope != null)
             {
-                for (int i = 0; i < aData.Length; i++)
-                {
-                    aData[i] = aData[i] + mSABaseLine[i].Y;
-                }
+                double lMinFreq = (Properties.Settings.Default.ScanMode == Constants.EField ? Properties.Settings.Default.SAEMinFreq : Properties.Settings.Default.SAHMinFreq) * 1000000;
+                double lMaxFreq = (Properties.Settings.Default.ScanMode == Constants.EField ? Properties.Settings.Default.SAEMaxFreq : Properties.Settings.Default.SAHMaxFreq) * 1000000;
+
+                mScope.ConfigureFrequencyStartStop(lMinFreq, lMaxFreq);
             }
         }
     }

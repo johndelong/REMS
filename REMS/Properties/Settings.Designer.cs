@@ -158,24 +158,24 @@ namespace REMS.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("30")]
-        public double SAMinFrequency {
+        public double SAEMinFreq {
             get {
-                return ((double)(this["SAMinFrequency"]));
+                return ((double)(this["SAEMinFreq"]));
             }
             set {
-                this["SAMinFrequency"] = value;
+                this["SAEMinFreq"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1000")]
-        public double SAMaxFrequency {
+        public double SAEMaxFreq {
             get {
-                return ((double)(this["SAMaxFrequency"]));
+                return ((double)(this["SAEMaxFreq"]));
             }
             set {
-                this["SAMaxFrequency"] = value;
+                this["SAEMaxFreq"] = value;
             }
         }
         
@@ -217,13 +217,13 @@ namespace REMS.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool EField {
+        [global::System.Configuration.DefaultSettingValueAttribute("EFIELD")]
+        public string ScanMode {
             get {
-                return ((bool)(this["EField"]));
+                return ((string)(this["ScanMode"]));
             }
             set {
-                this["EField"] = value;
+                this["ScanMode"] = value;
             }
         }
         
@@ -236,6 +236,42 @@ namespace REMS.Properties {
             }
             set {
                 this["ProbeNum"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("6.6")]
+        public double SAHMinFreq {
+            get {
+                return ((double)(this["SAHMinFreq"]));
+            }
+            set {
+                this["SAHMinFreq"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("7")]
+        public double SAHMaxFreq {
+            get {
+                return ((double)(this["SAHMaxFreq"]));
+            }
+            set {
+                this["SAHMaxFreq"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ProbeOffset {
+            get {
+                return ((int)(this["ProbeOffset"]));
+            }
+            set {
+                this["ProbeOffset"] = value;
             }
         }
     }

@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Threading;
 using System.Collections.Generic;
-//using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,6 +29,8 @@ namespace REMS.classes
         public static readonly string StatusDone = "Scan has finished";
         public static readonly string StatusCalibration1 = "Accurately click OPPOSITE corners of servo travel area";
         public static readonly string StatusCalibration2 = "Click 'Accept' if satisfied with calibration";
+        public static readonly string EField = "EFIELD";
+        public static readonly string HField = "HFIELD";
 
         public enum state : int
         {
@@ -134,54 +135,77 @@ namespace REMS.classes
             }
         }
 
-        public static Point[] convertScannedData(double[] aCollectData, double aMinFreq, double aStepSize, double aDistance, Boolean aEField, int aProbeNum, Boolean aConvert = true)
+        public static void removeNoise(double[] aData, Point[] aBaseLine)
         {
-            Point[] lResults = new Point[aCollectData.Length];
+            if (aBaseLine != null)
+            {
+                for (int i = 0; i < aData.Length; i++)
+                {
+                    aData[i] = aData[i] + aBaseLine[i].Y;
+                }
+            }
+        }
+
+        public static Point[] convertArray2Points(double[] aCollectedData, double aMinFreq, double aStepSize)
+        {
+            Point[] lResults = new Point[aCollectedData.Length];
             double lCurrentFreq = aMinFreq;
 
-            // Convert to dbuv
-            for (int i = 0; i < aCollectData.Length; i++)
+            for (int i = 0; i < aCollectedData.Length; i++)
             {
-                if (aConvert)
-                {
-                    // dBm -> dBuA = 90 + 10log10(Z) + dBm
-                    if (Properties.Settings.Default.EField) // E-Field Conversions
-                    {
-                        aCollectData[i] += 107; // dBuV
-                        // x + 20log10(1/mm)
-                        aCollectData[i] = aCollectData[i] + 20 * Math.Log10(1 / aDistance); // dBuV/m
-                    }
-
-                    // H Field = V + PF - 51.52
-                    else if (!Properties.Settings.Default.EField) // H-Field Conversions
-                    {
-                        aCollectData[i] += 107 - 51.52; //dBuA
-
-                        // Convert to //dBuA
-                        if (aProbeNum == 1) // 6 cm probe
-                        {
-                            aCollectData[i] += (4E-12 * Math.Pow(lCurrentFreq, 4) - 3E-08 * Math.Pow(lCurrentFreq, 3) + 8E-05 * Math.Pow(lCurrentFreq, 2) - 0.1004 * lCurrentFreq + 76.412);
-                        }
-                        else if (aProbeNum == 2) // 3 cm probe
-                        {
-                            aCollectData[i] += (2E-18 * Math.Pow(lCurrentFreq, 6) - 2E-14 * Math.Pow(lCurrentFreq, 5) + 7E-11 * Math.Pow(lCurrentFreq, 4) - 1E-07 * Math.Pow(lCurrentFreq, 3) + 0.0002 * Math.Pow(lCurrentFreq, 2) - 0.111 * lCurrentFreq + 84.084);
-                        }
-                        else if (aProbeNum == 3) // 1 cm probe
-                        {
-                            aCollectData[i] += (8E-19 * Math.Pow(lCurrentFreq, 6) - 9E-15 * Math.Pow(lCurrentFreq, 5) + 4E-11 * Math.Pow(lCurrentFreq, 4) - 8E-08 * Math.Pow(lCurrentFreq, 3) + 0.0001 * Math.Pow(lCurrentFreq, 2) - 0.094 * lCurrentFreq + 100.03);
-                        }
-
-                        aCollectData[i] = Math.Pow(10, (aCollectData[i] / 20)); // uA
-                        aCollectData[i] = aCollectData[i] / Math.Pow(10, 6); // A
-                        aCollectData[i] = aCollectData[i] / aDistance; // A/m
-                    }
-                }
-
-                lResults[i] = new Point(Math.Round(lCurrentFreq, 3), aCollectData[i]);
+                lResults[i] = new Point(Math.Round(lCurrentFreq, 3), aCollectedData[i]);
                 lCurrentFreq += aStepSize;
             }
 
             return lResults;
+        }
+
+        public static void convertScannedData(Point[] aCollectedData, double aDistance, String aScanMode, int aProbeNum)
+        {
+            Point[] lResults = new Point[aCollectedData.Length];
+
+            // Convert to dbuv
+            for (int i = 0; i < aCollectedData.Length; i++)
+            {
+                if (aScanMode == Constants.EField)
+                {
+                    aCollectedData[i].Y += 107; // dBuV
+                    
+                    if (aProbeNum == 1) // E-Field Conversions
+                    {
+                        // x + 20log10(1/mm)
+                        //aCollectedData[i].Y = aCollectedData[i].Y + 20 * Math.Log10(1 / aDistance); // dBuV/m
+                    }
+                    else if (aProbeNum == 2)
+                    {
+
+                    }
+                }
+
+                // H Field = V + PF - 51.52
+                else if(aScanMode == Constants.HField) // H-Field Conversions
+                {
+                    aCollectedData[i].Y += 107 - 51.52; //dBuA
+
+                    // Convert to //dBuA
+                    if (aProbeNum == 1) // 6 cm probe
+                    {
+                        aCollectedData[i].Y += (4E-12 * Math.Pow(aCollectedData[i].X, 4) - 3E-08 * Math.Pow(aCollectedData[i].X, 3) + 8E-05 * Math.Pow(aCollectedData[i].X, 2) - 0.1004 * aCollectedData[i].X + 76.412);
+                    }
+                    else if (aProbeNum == 2) // 3 cm probe
+                    {
+                        aCollectedData[i].Y += (2E-18 * Math.Pow(aCollectedData[i].X, 6) - 2E-14 * Math.Pow(aCollectedData[i].X, 5) + 7E-11 * Math.Pow(aCollectedData[i].X, 4) - 1E-07 * Math.Pow(aCollectedData[i].X, 3) + 0.0002 * Math.Pow(aCollectedData[i].X, 2) - 0.111 * aCollectedData[i].X + 84.084);
+                    }
+                    else if (aProbeNum == 3) // 1 cm probe
+                    {
+                        aCollectedData[i].Y += (8E-19 * Math.Pow(aCollectedData[i].X, 6) - 9E-15 * Math.Pow(aCollectedData[i].X, 5) + 4E-11 * Math.Pow(aCollectedData[i].X, 4) - 8E-08 * Math.Pow(aCollectedData[i].X, 3) + 0.0001 * Math.Pow(aCollectedData[i].X, 2) - 0.094 * aCollectedData[i].X + 100.03);
+                    }
+
+                    aCollectedData[i].Y = Math.Pow(10, (aCollectedData[i].Y / 20)); // uA
+                    aCollectedData[i].Y = aCollectedData[i].Y / Math.Pow(10, 6); // A
+                    //aCollectedData[i] = aCollectedData[i];// / aDistance; // A/m
+                }
+            }
         }
 
         public static void analyzeScannedData(Point[] aCollectedData, ObservableCollection<ThresholdViewModel> aThresholds,
@@ -209,7 +233,7 @@ namespace REMS.classes
                             if (prevLimit == null)
                                 prevLimit = lLimit;
 
-                            if (lPoint.X > Convert.ToDouble(lLimit.Frequency))
+                            if (lPoint.X > lLimit.Frequency)
                             {
                                 prevLimit = lLimit;
                                 continue;
@@ -217,13 +241,13 @@ namespace REMS.classes
 
                             // If we have gotten this far, we know we are comparing 
                             //the data to the correct threshold
-                            if (Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1) < lMinDifference || lMinDifference == null)
+                            if (prevLimit.Amplitude - lPoint.Y < lMinDifference || lMinDifference == null)
                             {
-                                lMinDifference = Convert.ToDouble(prevLimit.Amplitude) + (lPoint.Y * -1);
+                                lMinDifference = prevLimit.Amplitude - lPoint.Y;
                                 lValue = (lMinDifference.Value * -1);
                             }
 
-                            if (lPoint.Y > Convert.ToInt32(prevLimit.Amplitude))
+                            if (lPoint.Y > prevLimit.Amplitude)
                             {
                                 lThreshold.State = "Failed";
                                 break;
@@ -240,7 +264,7 @@ namespace REMS.classes
                         }
 
                         // Only care to return the distance from the selected threashold
-                        if (lThreshold == aSelectedThreshold)
+                        if (lThreshold.Name == aSelectedThreshold.Name)
                         {
                             aReturnValue = lValue;
                         }
@@ -256,7 +280,7 @@ namespace REMS.classes
             foreach (ThresholdLimitViewModel lLimit in aThreshold.Limits)
             {
                 lAmplitude = lLimit.Amplitude + 20 * Math.Log10(3 / (aDistance / 1000));
-                lNewThreshold.Limits.Add(new ThresholdLimitViewModel(lLimit.Frequency, lAmplitude)); 
+                lNewThreshold.Limits.Add(new ThresholdLimitViewModel(lLimit.Frequency, lAmplitude));
             }
 
             return lNewThreshold;
@@ -474,14 +498,14 @@ namespace REMS.classes
 
     public static class LogReader
     {
-        public static void openReport(string aFileName, HeatMap aHeatMap, Grid ColorKey, 
-            out ObservableCollection<ScanLevel> aScanLevels, out Boolean aEField)
+        public static void openReport(string aFileName, HeatMap aHeatMap, Grid ColorKey,
+            out ObservableCollection<ScanLevel> aScanLevels, out String aScanMode)
         {
             string[] lLine = null;
             aScanLevels = new ObservableCollection<ScanLevel>();
             int lRows = 0;
             int lCols = 0;
-            aEField = true; // defaults to E-Field
+            aScanMode = Constants.EField; // defaults to E-Field
             Boolean lFirstLine = true;
             string lScanType = "E";
             try
@@ -517,9 +541,9 @@ namespace REMS.classes
                 //aScanLevels = lScanLevels;
 
                 if (lScanType == "E")
-                    aEField = true;
+                    aScanMode = Constants.EField;
                 else
-                    aEField = false;
+                    aScanMode = Constants.HField;
             }
             catch (Exception)
             {
@@ -540,7 +564,7 @@ namespace REMS.classes
         /// <param name="data"></param>
         /// 
 
-        public static void initializeFile(string aFileName, int aCols, int aRows, int aXYPlanes, Boolean aEField)
+        public static void initializeFile(string aFileName, int aCols, int aRows, int aXYPlanes, String aEField)
         {
             try
             {
@@ -553,7 +577,7 @@ namespace REMS.classes
                     swLog.Write(aRows.ToString() + ",");
                     swLog.Write(aXYPlanes.ToString() + ",");
 
-                    if (aEField)
+                    if (aEField == Constants.EField)
                     {
                         swLog.Write("E,"); // E-Field scan
                     }
@@ -632,7 +656,7 @@ namespace REMS.classes
                                 lResult = null;
                         }
                     }
-                    
+
                 }
                 catch (IOException)
                 {

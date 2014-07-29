@@ -248,9 +248,11 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="images\probes.png" />
     <Resource Include="images\rems.ico" />
     <Resource Include="images\rems.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="images\probes.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

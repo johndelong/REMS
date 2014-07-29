@@ -89,27 +89,62 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="100" />
-                                <ColumnDefinition Width="180" />
-
+                                <ColumnDefinition Width="175" />
+                                <ColumnDefinition Width="175" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.ColumnSpan="3" TextWrapping="Wrap" Height="Auto">
                                     Caution: If frequency values are changed, a new base scan is required to give an accurage reading.
                             </TextBlock>
 
-                            <Label Grid.Row="1" Grid.Column="0" Content="Min (MHz):" />
-                            <Label Grid.Row="2" Grid.Column="0" Content="Max (MHz):" />
+                            <GroupBox Grid.Row="1" Grid.Column="0" Header="E-Field">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                            <TextBox Name="tbSAMinFreq" Grid.Row="1" Grid.Column="1" Width="Auto" Margin="3"
-                                     Text="{Binding ElementName=PopupWindow, Path=SAMinFrequency, Mode=TwoWay}" />
-                            
-                            <TextBox Name="tbSAMaxFreq" Grid.Row="2" Grid.Column="1" Width="Auto" Margin="3"
-                                    Text="{Binding ElementName=PopupWindow, Path=SAMaxFrequency, Mode=TwoWay}" />
+                                    <Label Grid.Row="0" Grid.Column="0" Content="Min (MHz):" />
+                                    <Label Grid.Row="1" Grid.Column="0" Content="Max (MHz):" />
+
+                                    <TextBox Name="tbSAEMinFreq" Grid.Row="0" Grid.Column="1" Width="80" Margin="3"
+                                     Text="{Binding ElementName=PopupWindow, Path=SAEMinFrequency, Mode=TwoWay}" />
+
+                                    <TextBox Name="tbSAEMaxFreq" Grid.Row="1" Grid.Column="1" Width="80" Margin="3"
+                                    Text="{Binding ElementName=PopupWindow, Path=SAEMaxFrequency, Mode=TwoWay}" />
+
+                                </Grid>
+                            </GroupBox>
+
+                            <GroupBox Grid.Row="1"  Grid.Column="1" Header="H-Field">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Label Grid.Row="0" Grid.Column="0" Content="Min (MHz):" />
+                                    <Label Grid.Row="1" Grid.Column="0" Content="Max (MHz):" />
+
+                                    <TextBox Name="tbSAHMinFreq" Grid.Row="0" Grid.Column="1" Width="80" Margin="3"
+                                     Text="{Binding ElementName=PopupWindow, Path=SAHMinFrequency, Mode=TwoWay}" />
+
+                                    <TextBox Name="tbSAHMaxFreq" Grid.Row="1" Grid.Column="1" Width="80" Margin="3"
+                                    Text="{Binding ElementName=PopupWindow, Path=SAHMaxFrequency, Mode=TwoWay}" />
+
+                                </Grid>
+                            </GroupBox>
+
                         </Grid>
                     </GroupBox>
 

@@ -35,10 +35,10 @@
     <Setting Name="nsZMax" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
-    <Setting Name="SAMinFrequency" Type="System.Double" Scope="User">
+    <Setting Name="SAEMinFreq" Type="System.Double" Scope="User">
       <Value Profile="(Default)">30</Value>
     </Setting>
-    <Setting Name="SAMaxFrequency" Type="System.Double" Scope="User">
+    <Setting Name="SAEMaxFreq" Type="System.Double" Scope="User">
       <Value Profile="(Default)">1000</Value>
     </Setting>
     <Setting Name="MotorCommPort" Type="System.Int32" Scope="User">
@@ -50,10 +50,19 @@
     <Setting Name="BaseLine" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="EField" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
+    <Setting Name="ScanMode" Type="System.String" Scope="User">
+      <Value Profile="(Default)">EFIELD</Value>
     </Setting>
     <Setting Name="ProbeNum" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="SAHMinFreq" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">6.6</Value>
+    </Setting>
+    <Setting Name="SAHMaxFreq" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">7</Value>
+    </Setting>
+    <Setting Name="ProbeOffset" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
   </Settings>
