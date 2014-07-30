@@ -45,7 +45,7 @@
                 <RadioButton Grid.Row="1" Grid.Column="2" Name="rbHProbe3" Content="1 cm Probe" GroupName="HProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbHField, Path=IsChecked}"/>
 
                 <RadioButton Grid.Row="2" Grid.Column="0" Name="rbEProbe1" Content="Ball" GroupName="EProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbEField, Path=IsChecked}"/>
-                <RadioButton Grid.Row="2" Grid.Column="1" Name="rbEProbe2" Content="Point" GroupName="EProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbEField, Path=IsChecked}" />
+                <RadioButton Grid.Row="2" Grid.Column="1" Name="rbEProbe2" Content="Stub" GroupName="EProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbEField, Path=IsChecked}" />
 
             </Grid>
         </GroupBox>

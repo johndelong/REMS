@@ -37,17 +37,17 @@ namespace REMS.popups
                 if (rbHProbe1.IsChecked == true)
                 {
                     lProbeNum = 1;
-                    lProbeOffset = 150;
+                    lProbeOffset = 140;
                 }
                 else if (rbHProbe2.IsChecked == true)
                 {
                     lProbeNum = 2;
-                    lProbeOffset = 150;
+                    lProbeOffset = 130;
                 }
                 else if (rbHProbe3.IsChecked == true)
                 {
                     lProbeNum = 3;
-                    lProbeOffset = 150;
+                    lProbeOffset = 120;
                 }
             }
             else if (rbEField.IsChecked == true)

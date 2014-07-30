@@ -153,7 +153,7 @@ namespace REMS.classes
 
             for (int i = 0; i < aCollectedData.Length; i++)
             {
-                lResults[i] = new Point(Math.Round(lCurrentFreq, 3), aCollectedData[i]);
+                lResults[i] = new Point(Math.Round(lCurrentFreq / 1000000, 3), aCollectedData[i]);
                 lCurrentFreq += aStepSize;
             }
 
@@ -173,12 +173,11 @@ namespace REMS.classes
                     
                     if (aProbeNum == 1) // E-Field Conversions
                     {
-                        // x + 20log10(1/mm)
-                        //aCollectedData[i].Y = aCollectedData[i].Y + 20 * Math.Log10(1 / aDistance); // dBuV/m
+                        aCollectedData[i].Y += 8E-19 * Math.Pow(aCollectedData[i].X, 6) - 1E-14 * Math.Pow(aCollectedData[i].X, 5) + 7E-11 * Math.Pow(aCollectedData[i].X, 4) - 2E-07 * Math.Pow(aCollectedData[i].X, 3) + 0.0002 * Math.Pow(aCollectedData[i].X, 2) - 0.1127 * aCollectedData[i].X + 77.004;
                     }
                     else if (aProbeNum == 2)
                     {
-
+                        aCollectedData[i].Y += -4E-18 * Math.Pow(aCollectedData[i].X, 6) + 4E-14 * Math.Pow(aCollectedData[i].X, 5) - 1E-10 * Math.Pow(aCollectedData[i].X, 4) + 1E-07 * Math.Pow(aCollectedData[i].X, 3) + 7E-06 * Math.Pow(aCollectedData[i].X, 2) - 0.0615 * aCollectedData[i].X + 95.978;
                     }
                 }
 
@@ -498,7 +497,7 @@ namespace REMS.classes
 
     public static class LogReader
     {
-        public static void openReport(string aFileName, HeatMap aHeatMap, Grid ColorKey,
+        public static void openReport(string aFileName, HeatMap aHeatMap, Grid ColorKey, out int aDUTHeight,
             out ObservableCollection<ScanLevel> aScanLevels, out String aScanMode)
         {
             string[] lLine = null;
@@ -506,6 +505,7 @@ namespace REMS.classes
             int lRows = 0;
             int lCols = 0;
             aScanMode = Constants.EField; // defaults to E-Field
+            aDUTHeight = 0;
             Boolean lFirstLine = true;
             string lScanType = "E";
             try
@@ -520,7 +520,8 @@ namespace REMS.classes
                         {
                             lCols = Convert.ToInt32(lLine[0]);
                             lRows = Convert.ToInt32(lLine[1]);
-                            lScanType = lLine[3];
+                            aDUTHeight = Convert.ToInt32(lLine[3]);
+                            lScanType = lLine[4];
                             lFirstLine = false;
                             continue;
                         }
@@ -564,7 +565,7 @@ namespace REMS.classes
         /// <param name="data"></param>
         /// 
 
-        public static void initializeFile(string aFileName, int aCols, int aRows, int aXYPlanes, String aEField)
+        public static void initializeFile(string aFileName, int aCols, int aRows, int aXYPlanes, int aDUTHeight, String aEField)
         {
             try
             {
@@ -576,6 +577,7 @@ namespace REMS.classes
                     swLog.Write(aCols.ToString() + ",");
                     swLog.Write(aRows.ToString() + ",");
                     swLog.Write(aXYPlanes.ToString() + ",");
+                    swLog.Write(aDUTHeight.ToString() + ",");
 
                     if (aEField == Constants.EField)
                     {

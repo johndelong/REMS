@@ -223,7 +223,6 @@ namespace REMS
                     if (moveMotors(0, 0, mMotorZTravelDistance, true))
                     {
                         mProbeChangeState = 0;
-                        transitionToState(Constants.state.Initial);
                     }
                 }
             }
@@ -250,6 +249,10 @@ namespace REMS
                 // only enable the resume button when this thread has finished
                 btnAccept.IsEnabled = true;
                 btnCancel.IsEnabled = true;
+            }
+            else if (mCurrentState == Constants.state.ProbeChange)
+            {
+                transitionToState(Constants.state.Initial);
             }
         }
 
@@ -490,7 +493,7 @@ namespace REMS
                     // Initialize the file
                     if (!mScanStarted)
                     {
-                        Logger.initializeFile(mLogFileName + ".csv", mXScanPoints, mYScanPoints, mScans.Count, Properties.Settings.Default.ScanMode);
+                        Logger.initializeFile(mLogFileName + ".csv", mXScanPoints, mYScanPoints, mScans.Count, mDUTHeight, Properties.Settings.Default.ScanMode);
                         mScanStarted = true;
                     }
 
@@ -734,7 +737,7 @@ namespace REMS
                 mLogFileName = tokens[0];
 
                 // Read In the Log file
-                LogReader.openReport(mLogFileName + ".csv", mHeatMap, IntensityColorKeyGrid, out mScans, out lScanMode);
+                LogReader.openReport(mLogFileName + ".csv", mHeatMap, IntensityColorKeyGrid, out mDUTHeight, out mScans, out lScanMode);
 
                 dgZScanPoints.ItemsSource = mScans;
                 mScanMode = lScanMode;
@@ -1261,7 +1264,7 @@ namespace REMS
 
             if (Properties.Settings.Default.ScanMode == Constants.EField)
             {
-                Utilities.analyzeScannedData(lFinalData, mThresholds, mSelectedThreshold, mMotorZPos, out lPassed, out lMaxDifference);
+                Utilities.analyzeScannedData(lFinalData, mThresholds, mSelectedThreshold, mMotorZPos - mDUTHeight, out lPassed, out lMaxDifference);
 
                 mScans.ElementAt<ScanLevel>(mCurrentZScanIndex).pfState = lPassed ? "Passed" : "Failed";
             }
@@ -1492,7 +1495,7 @@ namespace REMS
 
                             if (mScanMode == Constants.EField)
                             {
-                                Utilities.analyzeScannedData(lData, mThresholds, mSelectedThreshold, (double)(((ScanLevel)dgZScanPoints.SelectedItem).ZPos), out lPassed, out lValue);
+                                Utilities.analyzeScannedData(lData, mThresholds, mSelectedThreshold, (double)(((ScanLevel)dgZScanPoints.SelectedItem).ZPos) - mDUTHeight, out lPassed, out lValue);
 
                                 mScans.ElementAt<ScanLevel>(aZIndex).pfState = lPassed ? "Passed" : "Failed";
                             }
