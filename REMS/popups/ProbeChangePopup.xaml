@@ -41,10 +41,10 @@
                 
                 <Image Grid.Row="0" Grid.ColumnSpan="3" Source="/REMS;component/images/probes.png" Width="250" />
                 <RadioButton Grid.Row="1" Grid.Column="0" Name="rbHProbe1" Content="6 cm Probe" GroupName="HProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbHField, Path=IsChecked}" />
-                <RadioButton Grid.Row="1" Grid.Column="1" Name="rbHProbe2" Content="3 cm Probe" GroupName="HProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbHField, Path=IsChecked}" />
+                <RadioButton Grid.Row="1" Grid.Column="1" Name="rbHProbe2" Content="3 cm Probe" GroupName="HProbes" IsChecked="True" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbHField, Path=IsChecked}" />
                 <RadioButton Grid.Row="1" Grid.Column="2" Name="rbHProbe3" Content="1 cm Probe" GroupName="HProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbHField, Path=IsChecked}"/>
 
-                <RadioButton Grid.Row="2" Grid.Column="0" Name="rbEProbe1" Content="Ball" GroupName="EProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbEField, Path=IsChecked}"/>
+                <RadioButton Grid.Row="2" Grid.Column="0" Name="rbEProbe1" Content="Ball" GroupName="EProbes" IsChecked="True" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbEField, Path=IsChecked}"/>
                 <RadioButton Grid.Row="2" Grid.Column="1" Name="rbEProbe2" Content="Stub" GroupName="EProbes" HorizontalAlignment="Center" IsEnabled="{Binding ElementName=rbEField, Path=IsChecked}" />
 
             </Grid>
